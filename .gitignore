@@ -19,8 +19,6 @@ ltmain.sh
 .deps/
 *.o
 *.swp
-src/apps/fv_test
-src/apps/fv_app
 stamp-h1
 Makefile
 autom4te.cache
@@ -31,3 +29,5 @@ missing
 tags
 compile
 src/.dirstamp
+src/client/dove_vpn_client
+src/server/dove_vpn_server
