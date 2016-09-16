@@ -23,4 +23,6 @@
 #define DV_NTOHS(a)     ntohs(a)
 #define DV_NTOHL(a)     ntohl(a)
 
+extern int dv_process_daemonize(void);
+
 #endif
