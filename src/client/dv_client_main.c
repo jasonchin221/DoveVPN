@@ -16,6 +16,8 @@
 #include "dv_types.h"
 #include "dv_errno.h"
 #include "dv_lib.h"
+#include "dv_client_net.h"
+#include "dv_proto.h"
 
 static const char *
 dv_program_version = "1.0.0";//PACKAGE_STRING;
@@ -30,6 +32,7 @@ dv_long_opts[] = {
 	{"certificate", 0, 0, 'c'},
 	{"root-ca", 0, 0, 'r'},
 	{"key", 0, 0, 'k'},
+	{"mode", 0, 0, 'm'},
 	{0, 0, 0, 0}
 };
 
@@ -42,6 +45,7 @@ dv_options[] = {
 	"--root-ca      -r	ca certificate file\n",	
 	"--tun          -t	tun device name\n",	
 	"--daemonize    -d	daemonize process\n",	
+	"--mode         -m	mode(plaintext, tls, satl)\n",	
 	"--help         -H	Print help information\n",	
 };
 
@@ -58,22 +62,8 @@ dv_help(void)
 	}
 }
 
-static int
-dv_v4_client(struct sockaddr_in *addr, char *cf, char *key, char *ca,
-        char *dev)
-{
-    return 0;
-}
-
-static int
-dv_v6_client(struct sockaddr_in6 *addr, char *cf, char *key, char *ca,
-        char *dev)
-{
-    return 0;
-}
-
 static const char *
-dv_optstring = "Hdta:p:c:k:r:";
+dv_optstring = "Hdta:p:c:k:r:m:";
 
 int
 main(int argc, char **argv)  
@@ -84,12 +74,14 @@ main(int argc, char **argv)
     char                    *cf = NULL;
     char                    *key = NULL;
     char                    *dev = NULL;
+    char                    *mode = NULL;
     struct sockaddr_in      addr = {
         .sin_family = AF_INET,
     };
     struct sockaddr_in6     addr6 = {
         .sin6_family = AF_INET6,
     };
+    dv_u8                   proto = DV_PROTO_NONE;
     int                     c = 0;
     int                     d = 0;
 
@@ -128,6 +120,10 @@ main(int argc, char **argv)
                 key = optarg;
                 break;
 
+            case 'm':
+                mode = optarg;
+                break;
+
             default:
                 dv_help();
                 return -DV_ERROR;
@@ -151,12 +147,15 @@ main(int argc, char **argv)
         }
     }
 
-    if (1) {
-        addr.sin_port = htons(atoi(port));
-        addr.sin_addr.s_addr = inet_addr(ip);
-        return dv_v4_client(&addr, cf, key, ca, dev);
+    if (mode != NULL) {
     }
 
-    addr6.sin6_port = htons(atoi(port));
-    return dv_v6_client(&addr6, cf, key, ca, dev);
+    if (dv_ip_version4(ip)) {
+        addr.sin_port = DV_HTONS(atoi(port));
+        addr.sin_addr.s_addr = inet_addr(ip);
+        return dv_v4_client(&addr, cf, key, ca, dev, proto);
+    }
+
+    addr6.sin6_port = DV_HTONS(atoi(port));
+    return dv_v6_client(&addr6, cf, key, ca, dev, proto);
 }

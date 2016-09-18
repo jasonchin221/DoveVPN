@@ -23,6 +23,12 @@
 #define DV_NTOHS(a)     ntohs(a)
 #define DV_NTOHL(a)     ntohl(a)
 
+static inline int 
+dv_ip_version4(char *ip)
+{
+    return (strstr(ip, ":") == NULL);
+}
+
 extern int dv_process_daemonize(void);
 
 #endif
