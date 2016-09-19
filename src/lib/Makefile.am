@@ -1,5 +1,5 @@
 lib_LTLIBRARIES = libdove_vpn.la
-libdove_vpn_la_SOURCES = dv_process.c dv_tun.c
+libdove_vpn_la_SOURCES = dv_process.c dv_tun.c dv_log.c
 
 AM_CPPFLAGS = -I$(srcdir)/../include
 AM_CFLAGS = -Wall -Werror
