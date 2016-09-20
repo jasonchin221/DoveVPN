@@ -16,21 +16,23 @@
 
 #define DV_CLIENT_LOG_NAME  "DoveVPN-Client"
 
+static dv_tun_t dv_client_tun;
+
 int
 dv_v4_client(struct sockaddr_in *addr, char *cf, char *key, char *ca,
-        char *dev, dv_u8 proto)
+        dv_u8 proto)
 {
-    dv_tun_t    tun = {};
     int         ret = DV_OK;
 
     dv_log_init(DV_CLIENT_LOG_NAME);
 
-    ret = dv_tun_open(&tun, dev);
+    ret = dv_tun_init(&dv_client_tun, 1);
     if (ret != DV_OK) {
         return DV_ERROR;
     }
 
-    close(tun.tn_fd);
+    sleep(10);
+    dv_tun_exit(&dv_client_tun, 1);
     dv_log_exit();
     return 0;
 }

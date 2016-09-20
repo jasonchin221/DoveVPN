@@ -12,7 +12,7 @@
 
 int
 dv_v6_client(struct sockaddr_in *addr, char *cf, char *key, char *ca,
-        char *dev, dv_u8 proto)
+        dv_u8 proto)
 {
     return 0;
 }

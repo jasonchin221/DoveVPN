@@ -1,36 +1,90 @@
 #include <sys/types.h>          /* See NOTES */
+#include <sys/ioctl.h>
 #include <sys/socket.h>
-#include <linux/if_tun.h>
-#include <linux/if.h>
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <linux/if_tun.h>
+#include <linux/if.h>
+#include <stdbool.h>
 #include <fcntl.h>
-#include <sys/ioctl.h>
+#include <string.h>
+#include <unistd.h>
+#include <stdlib.h>
 
 #include "dv_tun.h"
 #include "dv_log.h"
 #include "dv_types.h"
 #include "dv_errno.h"
 
-int
-dv_tun_open(dv_tun_t *tun, char *dev)
+static int
+dv_tun_dev_create(dv_tun_t *tun, int i)
 {
     struct ifreq    ifr = {};
 
-    if ((tun->tn_fd = open(dev, O_RDWR)) < 0) {
-        DV_LOG(DV_LOG_EMERG, "Cannot open %s\n", dev);
+    if ((tun->tn_fd = open(DV_DEV_TUN, O_RDWR)) < 0) {
+        DV_LOG(DV_LOG_EMERG, "Cannot open %s\n", DV_DEV_TUN);
         return DV_ERROR;
     }
 
-    ifr.ifr_flags |= IFF_TUN;
+    ifr.ifr_flags = IFF_TUN | IFF_NO_PI;
+    snprintf(ifr.ifr_name, sizeof(ifr.ifr_name) - 1, "tun%d", i);
+    strncpy(tun->tn_name, ifr.ifr_name, sizeof(tun->tn_name) - 1);
     if (ioctl(tun->tn_fd, TUNSETIFF, (void *)&ifr) < 0) {
-        DV_LOG(DV_LOG_EMERG, "Cannot set tun for %s\n", dev);
+        DV_LOG(DV_LOG_EMERG, "Cannot set tun for %s\n", ifr.ifr_name);
+        close(tun->tn_fd);
+        return DV_ERROR;
+    }
+
+    if (ioctl(tun->tn_fd, TUNSETPERSIST, 1) < 0){
+        DV_LOG(DV_LOG_EMERG, "Enabling TUNSETPERSIST\n");
+        close(tun->tn_fd);
         return DV_ERROR;
     }
 
     return DV_OK;
 }
 
+static void
+dv_tun_dev_destroy(dv_tun_t *tun)
+{
+    if (ioctl(tun->tn_fd, TUNSETPERSIST, 0) < 0) {
+        DV_LOG(DV_LOG_EMERG, "Disabling TUNSETPERSIST\n");
+        exit(1);
+    }
+
+    close(tun->tn_fd);
+}
+
+int
+dv_tun_init(dv_tun_t *tun, dv_u8 num)
+{
+    dv_u8       i = 0;
+    int         ret = DV_OK;
+
+    for (i = 0; i < num; i++, tun++) {
+        ret = dv_tun_dev_create(tun, i);
+        if (ret != DV_OK) {
+            tun->tn_fd = -1;
+            return DV_ERROR;
+        }
+    }
+
+    return DV_OK;
+}
+    
+void
+dv_tun_exit(dv_tun_t *tun, dv_u8 num)
+{
+    dv_u8       i = 0;
+
+    for (i = 0; i < num; i++, tun++) {
+        if (tun->tn_fd < 0) {
+            break;
+        }
+        dv_tun_dev_destroy(tun);
+    }
+}
+ 
 #if 0
 bool
 is_dev_type (const char *dev, const char *dev_type, const char *match_type)

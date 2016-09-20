@@ -66,7 +66,6 @@ AC_CONFIG_FILES([
 				 src/Makefile
 				 src/client/Makefile
 				 src/server/Makefile
-				 src/lib/Makefile
 				 src/tools/Makefile
 				 ])
 

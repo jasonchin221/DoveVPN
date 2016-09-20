@@ -25,7 +25,6 @@ dv_program_version = "1.0.0";//PACKAGE_STRING;
 static const struct option 
 dv_long_opts[] = {
 	{"help", 0, 0, 'H'},
-	{"tun", 0, 0, 't'},
 	{"daemonize", 0, 0, 'd'},
 	{"address", 0, 0, 'a'},
 	{"port", 0, 0, 'p'},
@@ -43,7 +42,6 @@ dv_options[] = {
 	"--certificate  -c	certificate file\n",	
 	"--key          -k	private key file\n",	
 	"--root-ca      -r	ca certificate file\n",	
-	"--tun          -t	tun device name\n",	
 	"--daemonize    -d	daemonize process\n",	
 	"--mode         -m	mode(plaintext, tls, satl)\n",	
 	"--help         -H	Print help information\n",	
@@ -63,7 +61,7 @@ dv_help(void)
 }
 
 static const char *
-dv_optstring = "Hdta:p:c:k:r:m:";
+dv_optstring = "Hda:p:c:k:r:m:";
 
 int
 main(int argc, char **argv)  
@@ -73,7 +71,6 @@ main(int argc, char **argv)
     char                    *ca = NULL;
     char                    *cf = NULL;
     char                    *key = NULL;
-    char                    *dev = NULL;
     char                    *mode = NULL;
     struct sockaddr_in      addr = {
         .sin_family = AF_INET,
@@ -94,10 +91,6 @@ main(int argc, char **argv)
 
             case 'd':
                 d = 1;
-                break;
-
-            case 't':
-                dev = optarg;
                 break;
 
             case 'a':
@@ -153,9 +146,9 @@ main(int argc, char **argv)
     if (dv_ip_version4(ip)) {
         addr.sin_port = DV_HTONS(atoi(port));
         addr.sin_addr.s_addr = inet_addr(ip);
-        return dv_v4_client(&addr, cf, key, ca, dev, proto);
+        return dv_v4_client(&addr, cf, key, ca, proto);
     }
 
     addr6.sin6_port = DV_HTONS(atoi(port));
-    return dv_v6_client(&addr6, cf, key, ca, dev, proto);
+    return dv_v6_client(&addr6, cf, key, ca, proto);
 }
