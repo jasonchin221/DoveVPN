@@ -1,1 +1,5 @@
-To be determined
+Client:
+1. config ip for tun
+2. add fd of tun to epoll
+3. setup tunnel
+Server:
