@@ -6,3 +6,4 @@ dove_vpn_client_LDADD = $(srcdir)/../lib/libdove_vpn.la
 
 AM_CPPFLAGS = -I$(srcdir)/../include -lm
 AM_CFLAGS = -Wall -Werror
+AUTOMAKE_OPTIONS = foreign subdir-objects
