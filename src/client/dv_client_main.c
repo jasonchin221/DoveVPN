@@ -18,6 +18,7 @@
 #include "dv_lib.h"
 #include "dv_client_net.h"
 #include "dv_proto.h"
+#include "dv_client_conf.h"
 
 static const char *
 dv_program_version = "1.0.0";//PACKAGE_STRING;
@@ -26,24 +27,14 @@ static const struct option
 dv_long_opts[] = {
 	{"help", 0, 0, 'H'},
 	{"daemonize", 0, 0, 'd'},
-	{"address", 0, 0, 'a'},
-	{"port", 0, 0, 'p'},
-	{"certificate", 0, 0, 'c'},
-	{"root-ca", 0, 0, 'r'},
-	{"key", 0, 0, 'k'},
-	{"mode", 0, 0, 'm'},
+	{"config", 0, 0, 'c'},
 	{0, 0, 0, 0}
 };
 
 static const char *
 dv_options[] = {
-	"--address      -a	IP address for TLS tunnel\n",	
-	"--port         -p	Port for TLS tunnel\n",	
-	"--certificate  -c	certificate file\n",	
-	"--key          -k	private key file\n",	
-	"--root-ca      -r	ca certificate file\n",	
+	"--config       -c	configure file\n",	
 	"--daemonize    -d	daemonize process\n",	
-	"--mode         -m	mode(plaintext, tls, satl)\n",	
 	"--help         -H	Print help information\n",	
 };
 
@@ -61,7 +52,7 @@ dv_help(void)
 }
 
 static const char *
-dv_optstring = "Hda:p:c:k:r:m:";
+dv_optstring = "Hdc:";
 
 int
 main(int argc, char **argv)  
