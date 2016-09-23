@@ -3,7 +3,7 @@
 #include "dv_errno.h"
 
 int
-dv_client_conf_parse(dv_client_conf_t *conf, char *file)
+dv_cli_conf_parse(dv_client_conf_t *conf, char *file)
 {
     return DV_OK;
 }

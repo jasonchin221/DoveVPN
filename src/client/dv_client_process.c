@@ -13,14 +13,14 @@
 #include "dv_tun.h"
 #include "dv_log.h"
 #include "dv_errno.h"
+#include "dv_client_conf.h"
 
 #define DV_CLIENT_LOG_NAME  "DoveVPN-Client"
 
 static dv_tun_t dv_client_tun;
 
 int
-dv_v4_client(struct sockaddr_in *addr, char *cf, char *key, char *ca,
-        dv_u8 proto)
+dv_client_process(dv_client_conf_t *conf)
 {
     int         ret = DV_OK;
 
@@ -35,6 +35,5 @@ dv_v4_client(struct sockaddr_in *addr, char *cf, char *key, char *ca,
     dv_tun_exit(&dv_client_tun, 1);
     dv_log_exit();
     return 0;
+
 }
-
-

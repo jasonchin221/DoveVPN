@@ -16,9 +16,9 @@
 #include "dv_types.h"
 #include "dv_errno.h"
 #include "dv_lib.h"
-#include "dv_client_net.h"
 #include "dv_proto.h"
 #include "dv_client_conf.h"
+#include "dv_client_process.h"
 
 static const char *
 dv_program_version = "1.0.0";//PACKAGE_STRING;
@@ -57,21 +57,11 @@ dv_optstring = "Hdc:";
 int
 main(int argc, char **argv)  
 {
-    char                    *ip = NULL;
-    char                    *port = NULL;
-    char                    *ca = NULL;
     char                    *cf = NULL;
-    char                    *key = NULL;
-    char                    *mode = NULL;
-    struct sockaddr_in      addr = {
-        .sin_family = AF_INET,
-    };
-    struct sockaddr_in6     addr6 = {
-        .sin6_family = AF_INET6,
-    };
-    dv_u8                   proto = DV_PROTO_NONE;
+    dv_client_conf_t        conf = {};
     int                     c = 0;
     int                     d = 0;
+    int                     ret = 0;
 
     while((c = getopt_long(argc, argv, 
                     dv_optstring,  dv_long_opts, NULL)) != -1) {
@@ -84,28 +74,8 @@ main(int argc, char **argv)
                 d = 1;
                 break;
 
-            case 'a':
-                ip = optarg;
-                break;
-
-            case 'p':
-                port = optarg;
-                break;
-
             case 'c':
                 cf = optarg;
-                break;
-
-            case 'r':
-                ca = optarg;
-                break;
-
-            case 'k':
-                key = optarg;
-                break;
-
-            case 'm':
-                mode = optarg;
                 break;
 
             default:
@@ -115,12 +85,13 @@ main(int argc, char **argv)
     }
 
     if (cf == NULL) {
-        fprintf(stderr, "Please input cf by -c!\n");
+        fprintf(stderr, "Please input configure file by -c!\n");
         return -DV_ERROR;
     }
 
-    if (key == NULL) {
-        fprintf(stderr, "Please input key by -k!\n");
+    ret = dv_cli_conf_parse(&conf, cf);
+    if (ret != DV_OK) {
+        fprintf(stderr, "Parse %s failed!\n", cf);
         return -DV_ERROR;
     }
 
@@ -131,15 +102,10 @@ main(int argc, char **argv)
         }
     }
 
-    if (mode != NULL) {
-    }
+    return dv_client_process(&conf);
+    //if (dv_ip_version4(conf.cc_ip)) {
+        //addr.sin_port = DV_HTONS(atoi(port));
+        //addr.sin_addr.s_addr = inet_addr(ip);
 
-    if (dv_ip_version4(ip)) {
-        addr.sin_port = DV_HTONS(atoi(port));
-        addr.sin_addr.s_addr = inet_addr(ip);
-        return dv_v4_client(&addr, cf, key, ca, proto);
-    }
-
-    addr6.sin6_port = DV_HTONS(atoi(port));
-    return dv_v6_client(&addr6, cf, key, ca, proto);
+    //addr6.sin6_port = DV_HTONS(atoi(port));
 }
