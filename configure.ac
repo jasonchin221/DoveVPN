@@ -15,6 +15,26 @@ AC_ARG_WITH(libevent_libraries,
 			[with_libevent_libraries="$withval"],
 			[with_libevent_libraries=no])
 
+AC_ARG_WITH(libcrypto_includes,
+			[  --with-libcrypto-includes=DIR    libcrypto include directory],
+			[with_libcrypto_includes="$withval"],
+			[with_libcrypto_includes=no])
+
+AC_ARG_WITH(libcrypto_libraries,
+			[  --with-libcrypto-libraries=DIR   libcrypto library directory],
+			[with_libcrypto_libraries="$withval"],
+			[with_libcrypto_libraries=no])
+
+AC_ARG_WITH(libjson_includes,
+			[  --with-libjson-includes=DIR    libjson include directory],
+			[with_libjson_includes="$withval"],
+			[with_libjson_includes=no])
+
+AC_ARG_WITH(libjson_libraries,
+			[  --with-libjson-libraries=DIR   libjson library directory],
+			[with_libjson_libraries="$withval"],
+			[with_libjson_libraries=no])
+
 
 CPPFLAGS="${CPPFLAGS} -I/usr/local/include"
 LIBS="${LIBS} -L/usr/local/lib"
@@ -57,6 +77,52 @@ if test "$LLIBEVENT" = "no"; then
     echo
     echo "   ERROR!  libevent library not found, go get it from"
     echo "   or use the --with-libevent-* options, if you have it installed"
+    echo "   in unusual place"
+    exit
+fi
+
+LIBCRYPTO=""
+AC_CHECK_HEADERS([openssl/ssl.h], , LIBCRYPTO="no")
+
+if test "$LIBCRYPTO" = "no"; then
+    echo
+    echo "   ERROR!  libcrypto headers not found, go get it from"
+    echo "   http://www.xmlsoft.org/downloads.html"
+    echo "   or use the --with-libcrypto-* options, if you have it installed"
+    echo "   in unusual place"
+    exit
+fi
+
+LLIBCRYPTO=""
+AC_CHECK_LIB([crypto], [OPENSSL_config], , LLIBCRYPTO="no")
+
+if test "$LLIBCRYPTO" = "no"; then
+    echo
+    echo "   ERROR!  libcrypto library not found, go get it from"
+    echo "   or use the --with-libcrypto-* options, if you have it installed"
+    echo "   in unusual place"
+    exit
+fi
+
+LIBJSON=""
+AC_CHECK_HEADERS([json/json.h], , LIBJSON="no")
+
+if test "$LIBJSON" = "no"; then
+    echo
+    echo "   ERROR!  libjson headers not found, go get it from"
+    echo "   http://www.xmlsoft.org/downloads.html"
+    echo "   or use the --with-libjson-* options, if you have it installed"
+    echo "   in unusual place"
+    exit
+fi
+
+LLIBJSON=""
+AC_CHECK_LIB([json], [json_object_from_file], , LLIBJSON="no")
+
+if test "$LLIBJSON" = "no"; then
+    echo
+    echo "   ERROR!  libjson library not found, go get it from"
+    echo "   or use the --with-libjson-* options, if you have it installed"
     echo "   in unusual place"
     exit
 fi

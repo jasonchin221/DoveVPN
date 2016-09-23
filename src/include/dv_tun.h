@@ -8,6 +8,7 @@
 
 typedef struct _dv_tun_t {
     int         tn_fd;
+    int         tn_sock_fd;
     char        tn_name[DV_DEV_NAME_LEN + 1];
 } dv_tun_t;
 

@@ -1,5 +1,8 @@
 Client:
-1. config ip for tun
-2. add fd of tun to epoll
-3. setup tunnel
+1. Parse config
+2. Setup tunnel
+3. Get IP address
+4. Config ip for tun
+5. Add fd of tun to epoll
+6. Transmite data
 Server:
