@@ -1,8 +1,8 @@
 #ifndef __DV_CONF_H__
 #define __DV_CONF_H__
 
-#include <json/json.h>
-#include <json/json_util.h>
+#include <json-c/json.h>
+#include <json-c/json_util.h>
 
 #include "dv_types.h"
 

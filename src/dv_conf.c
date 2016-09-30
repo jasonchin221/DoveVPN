@@ -1,26 +1,13 @@
 #include <stdio.h>
 #include <string.h>
 
-#include <json/json.h>
-#include <json/json_util.h>
+#include <json-c/json.h>
+#include <json-c/json_util.h>
 
 #include "dv_log.h"
 #include "dv_conf.h"
 #include "dv_errno.h"
 #include "dv_debug.h"
-
-static int
-json_object_object_get_ex(json_object* obj, const char *key,
-        json_object **sub_obj)
-{
-    *sub_obj = json_object_object_get(obj, key);
-
-    if (*sub_obj == NULL) {
-        return 0;
-    }
-
-    return 1;
-}
 
 json_object *
 dv_conf_parse(char *file, const char *key_name, json_object **sub_obj)

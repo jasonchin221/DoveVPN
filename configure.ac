@@ -1,7 +1,7 @@
 AC_INIT([DoveVPN], [1.0], [jasonchin221@gmail.com])
 AM_INIT_AUTOMAKE([-Wall -Werror])
 AC_PROG_CC
-AC_PROG_LIBTOOL
+#AC_PROG_LIBTOOL
 AC_CONFIG_MACRO_DIR([m4])
 AC_CONFIG_HEADERS([config.h])
 
@@ -105,7 +105,7 @@ if test "$LLIBCRYPTO" = "no"; then
 fi
 
 LIBJSON=""
-AC_CHECK_HEADERS([json/json.h], , LIBJSON="no")
+AC_CHECK_HEADERS([json-c/json.h], , LIBJSON="no")
 
 if test "$LIBJSON" = "no"; then
     echo
@@ -117,7 +117,7 @@ if test "$LIBJSON" = "no"; then
 fi
 
 LLIBJSON=""
-AC_CHECK_LIB([json], [json_object_from_file], , LLIBJSON="no")
+AC_CHECK_LIB([json-c], [json_object_from_file], , LLIBJSON="no")
 
 if test "$LLIBJSON" = "no"; then
     echo
