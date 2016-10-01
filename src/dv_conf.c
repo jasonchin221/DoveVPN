@@ -65,6 +65,7 @@ dv_config_parse(char *file, void *conf, const char *root_name,
 
     obj = dv_conf_parse(file, root_name, &sub_obj);
     if (obj == NULL) {
+        DV_LOG(DV_LOG_EMERG, "Parse %s failed!\n", root_name);
         ret = DV_ERROR;
         goto out;
     }
@@ -79,12 +80,14 @@ dv_config_parse(char *file, void *conf, const char *root_name,
                 continue;
             }
             ret = DV_ERROR;
+            DV_LOG(DV_LOG_EMERG, "%s not exist!\n", p->cp_name);
             goto out;
         }
 
         type = json_object_get_type(param);
         if (p->cp_type != type) {
             ret = DV_ERROR;
+            DV_LOG(DV_LOG_EMERG, "Type(%d) not match(%d)!\n", p->cp_type, type);
             goto out;
         }
 

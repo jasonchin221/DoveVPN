@@ -13,7 +13,7 @@ typedef struct _dv_client_conf_t {
     };
 #endif
     char                        cc_ip[DV_IP_ADDRESS_LEN];
-    dv_u16                      cc_port;
+    int                         cc_port;
 } dv_client_conf_t;
 
 extern int dv_cli_conf_parse(dv_client_conf_t *conf, char *file);
