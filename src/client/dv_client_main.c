@@ -102,10 +102,5 @@ main(int argc, char **argv)
         }
     }
 
-    return dv_client_process(&conf);
-    //if (dv_ip_version4(conf.cc_ip)) {
-        //addr.sin_port = DV_HTONS(atoi(port));
-        //addr.sin_addr.s_addr = inet_addr(ip);
-
-    //addr6.sin6_port = DV_HTONS(atoi(port));
+    return -dv_client_process(&conf);
 }

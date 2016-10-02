@@ -1,5 +1,4 @@
 Client:
-1. Parse config
 2. Setup tunnel
 3. Get IP address
 4. Config ip for tun

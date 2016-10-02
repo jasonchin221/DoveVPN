@@ -14,6 +14,7 @@
 #include "dv_log.h"
 #include "dv_errno.h"
 #include "dv_client_conf.h"
+#include "dv_socket.h"
 
 #define DV_CLIENT_LOG_NAME  "DoveVPN-Client"
 
@@ -22,7 +23,8 @@ static dv_tun_t dv_client_tun;
 int
 dv_client_process(dv_client_conf_t *conf)
 {
-    int         ret = DV_OK;
+    int         sockfd = 0;
+    int         ret = DV_ERROR;
 
     dv_log_init(DV_CLIENT_LOG_NAME);
 
@@ -31,9 +33,23 @@ dv_client_process(dv_client_conf_t *conf)
         return DV_ERROR;
     }
 
+    if (dv_ip_version4(conf->cc_ip)) {
+        sockfd = dv_sk_create_v4(conf->cc_ip, conf->cc_port);
+    } else {
+        sockfd = dv_sk_create_v6(conf->cc_ip, conf->cc_port);
+    }
+
+    if (sockfd < 0) {
+        goto out;
+    }
+
+    /* get and set tunnel ip via TLS */
+    /* add tun fd and sockfd to epoll */
     sleep(10);
+    ret = DV_OK;
+    close(sockfd);
+out:
     dv_tun_exit(&dv_client_tun, 1);
     dv_log_exit();
-    return 0;
-
+    return ret;
 }
