@@ -1,5 +1,4 @@
-
-
+#include <stdlib.h>
 #include <netinet/in.h>
 #include <sys/socket.h>
 
@@ -18,7 +17,7 @@ dv_sk_create_v4(const char *dip, dv_u16 dport)
         return DV_ERROR;
     }
 
-    dest.sin_port = DV_HTONS(atoi(dport));
+    dest.sin_port = DV_HTONS(dport);
     dest.sin_addr.s_addr = inet_addr(dip);
     if (connect(sockfd, (struct sockaddr *)&dest, sizeof(dest)) != 0) {
         return DV_ERROR;
@@ -38,7 +37,7 @@ dv_sk_create_v6(const char *dip, dv_u16 dport)
         return DV_ERROR;
     }
 
-    dest.sin6_port = DV_HTONS(atoi(dport));
+    dest.sin6_port = DV_HTONS(dport);
     //dest.sin6_addr.s_addr = inet_addr(dip);
     if (connect(sockfd, (struct sockaddr *)&dest, sizeof(dest)) != 0) {
         return DV_ERROR;

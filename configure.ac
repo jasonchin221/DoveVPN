@@ -25,6 +25,11 @@ AC_ARG_WITH(libcrypto_libraries,
 			[with_libcrypto_libraries="$withval"],
 			[with_libcrypto_libraries=no])
 
+AC_ARG_WITH(libssl_libraries,
+			[  --with-libssl-libraries=DIR   libssl library directory],
+			[with_libssl_libraries="$withval"],
+			[with_libssl_libraries=no])
+
 AC_ARG_WITH(libjson_includes,
 			[  --with-libjson-includes=DIR    libjson include directory],
 			[with_libjson_includes="$withval"],
@@ -103,6 +108,18 @@ if test "$LLIBCRYPTO" = "no"; then
     echo "   in unusual place"
     exit
 fi
+
+LLIBSSL=""
+AC_CHECK_LIB([ssl], [SSL_get_verify_result], , LLIBSSL="no")
+
+if test "$LLIBSSL" = "no"; then
+    echo
+    echo "   ERROR!  libssl library not found, go get it from"
+    echo "   or use the --with-libssl-* options, if you have it installed"
+    echo "   in unusual place"
+    exit
+fi
+
 
 LIBJSON=""
 AC_CHECK_HEADERS([json-c/json.h], , LIBJSON="no")

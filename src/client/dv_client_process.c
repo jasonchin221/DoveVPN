@@ -15,6 +15,7 @@
 #include "dv_errno.h"
 #include "dv_client_conf.h"
 #include "dv_socket.h"
+#include "dv_lib.h"
 
 #define DV_CLIENT_LOG_NAME  "DoveVPN-Client"
 
