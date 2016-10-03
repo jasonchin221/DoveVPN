@@ -16,15 +16,17 @@
 #include "dv_client_conf.h"
 #include "dv_socket.h"
 #include "dv_lib.h"
+#include "dv_proto.h"
 
 #define DV_CLIENT_LOG_NAME  "DoveVPN-Client"
 
 static dv_tun_t dv_client_tun;
+static int dv_client_sockfd;
 
 int
 dv_client_process(dv_client_conf_t *conf)
 {
-    int         sockfd = 0;
+    int         proto_type = 0;
     int         ret = DV_ERROR;
 
     dv_log_init(DV_CLIENT_LOG_NAME);
@@ -34,13 +36,18 @@ dv_client_process(dv_client_conf_t *conf)
         return DV_ERROR;
     }
 
-    if (dv_ip_version4(conf->cc_ip)) {
-        sockfd = dv_sk_create_v4(conf->cc_ip, conf->cc_port);
-    } else {
-        sockfd = dv_sk_create_v6(conf->cc_ip, conf->cc_port);
+    proto_type = dv_proto_find_type(conf->cc_proto_type);
+    if (proto_type < 0) {
+        return DV_ERROR;
     }
 
-    if (sockfd < 0) {
+    if (dv_ip_version4(conf->cc_ip)) {
+        dv_client_sockfd = dv_sk_create_v4(conf->cc_ip, conf->cc_port);
+    } else {
+        dv_client_sockfd = dv_sk_create_v6(conf->cc_ip, conf->cc_port);
+    }
+
+    if (dv_client_sockfd  < 0) {
         goto out;
     }
 
@@ -48,7 +55,7 @@ dv_client_process(dv_client_conf_t *conf)
     /* add tun fd and sockfd to epoll */
     sleep(10);
     ret = DV_OK;
-    close(sockfd);
+    close(dv_client_sockfd);
 out:
     dv_tun_exit(&dv_client_tun, 1);
     dv_log_exit();

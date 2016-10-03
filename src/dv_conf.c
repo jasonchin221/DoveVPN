@@ -47,7 +47,7 @@ dv_conf_parse_str(void *conf, json_object *param,
     const char      *val_str = NULL;
 
     val_str = json_object_get_string(param);
-    strncpy((void *)conf + p->cp_offset, val_str, p->cp_len);
+    strncpy((void *)conf + p->cp_offset, val_str, p->cp_len - 1);
 }
 
 int

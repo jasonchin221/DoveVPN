@@ -2,8 +2,23 @@
 #define __DV_PROTO_H__
 
 #define DV_DEF_SERVER_CIPHERS   "ECDHE-RSA-AES128-GCM-SHA256"
+#define DV_PROTO_OPENSSL        "openssl"
+#define DV_PROTO_DOVESSL        "dovessl"
+
+enum {
+    DV_PROTO_TYPE_NONE,
+    DV_PROTO_TYPE_OPENSSL,
+    DV_PROTO_TYPE_DOVESSL,
+    DV_PROTO_TYPE_MAX,
+};
+
+typedef struct _dv_proto_name_type_t {
+    int         nt_type;
+    const char  *nt_name;
+} dv_proto_name_type_t;
 
 typedef struct _dv_proto_suite_t {
+    int     ps_proto_type;
     int     ps_verify_mode;
     int     (*ps_library_init)(void);
     void    (*ps_add_all_algorithms)(void);
@@ -27,6 +42,8 @@ typedef struct _dv_proto_suite_t {
     int     (*ps_get_verify_result)(void *s);
 } dv_proto_suite_t;
 
-extern const dv_proto_suite_t dv_openssl_suite;
+extern const dv_proto_suite_t dv_suite_openssl;
+extern const dv_proto_suite_t *dv_proto_suite_find(int type);
+extern int dv_proto_find_type(const char *name);
 
 #endif

@@ -39,7 +39,8 @@ static void dv_openssl_set_verify(void *s, int mode, char *peer_cf);
 static int dv_openssl_get_verify_result(void *s);
 
 
-const dv_proto_suite_t dv_openssl_suite = {
+const dv_proto_suite_t dv_suite_openssl = {
+    .ps_proto_type = DV_PROTO_TYPE_OPENSSL,
     .ps_verify_mode = SSL_VERIFY_PEER,
     .ps_library_init = SSL_library_init,
     .ps_add_all_algorithms = dv_openssl_add_all_algorighms,

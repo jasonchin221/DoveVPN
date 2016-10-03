@@ -39,6 +39,7 @@ static void dv_dovessl_set_verify(void *s, int mode, char *peer_cf);
 static int dv_dovessl_get_verify_result(void *s);
 
 static const dv_proto_suite_t dv_dovessl_suite = {
+    .ps_proto_type = DV_PROTO_TYPE_DOVESSL,
     .ps_verify_mode = DV_SSL_VERIFY_PEER,
     .ps_library_init = dv_library_init,
     .ps_add_all_algorithms = dv_add_all_algorighms,
