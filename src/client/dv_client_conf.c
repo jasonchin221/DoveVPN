@@ -9,6 +9,9 @@
 #define DV_CLI_CONF_PORT            "port"
 #define DV_CLI_CONF_PROTO           "proto"
 #define DV_CLI_CONF_PROTO_TYPE      "type"
+#define DV_CLI_CONF_CERT            "cert"
+#define DV_CLI_CONF_KEY             "key"
+#define DV_CLI_CONF_CA              "ca"
 
 static dv_client_conf_t dv_cli_conf;
 
@@ -42,6 +45,30 @@ static dv_conf_parse_t dv_cli_conf_proto[] = {
         .cp_necessary = DV_TRUE,
         .cp_parse = dv_conf_parse_str,
     },
+    {
+        .cp_name = DV_CLI_CONF_CERT,
+        .cp_len = sizeof(dv_cli_conf.cc_cert),
+        .cp_offset = dv_offsetof(dv_client_conf_t, cc_cert),
+        .cp_type = json_type_string,
+        .cp_necessary = DV_TRUE,
+        .cp_parse = dv_conf_parse_str,
+    },
+    {
+        .cp_name = DV_CLI_CONF_KEY,
+        .cp_len = sizeof(dv_cli_conf.cc_key),
+        .cp_offset = dv_offsetof(dv_client_conf_t, cc_key),
+        .cp_type = json_type_string,
+        .cp_necessary = DV_TRUE,
+        .cp_parse = dv_conf_parse_str,
+    },
+    {
+        .cp_name = DV_CLI_CONF_CA,
+        .cp_len = sizeof(dv_cli_conf.cc_ca),
+        .cp_offset = dv_offsetof(dv_client_conf_t, cc_ca),
+        .cp_type = json_type_string,
+        .cp_necessary = DV_TRUE,
+        .cp_parse = dv_conf_parse_str,
+    },
 };
 
 #define DV_CLI_CONF_PROTO_ARRAY_SIZE DV_ARRAY_SIZE(dv_cli_conf_proto)
@@ -57,9 +84,7 @@ dv_cli_conf_parse(dv_client_conf_t *conf, char *file)
     if (ret != DV_OK) {
         return DV_ERROR;
     }
-    printf("ip=%s, port=%d\n", conf->cc_ip, conf->cc_port);
-    ret = dv_config_parse(file, conf, DV_CLI_CONF_PROTO, 
-        dv_cli_conf_proto, DV_CLI_CONF_PROTO_ARRAY_SIZE);
 
-    return ret;
+    return dv_config_parse(file, conf, DV_CLI_CONF_PROTO, 
+        dv_cli_conf_proto, DV_CLI_CONF_PROTO_ARRAY_SIZE);
 }
