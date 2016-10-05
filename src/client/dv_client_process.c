@@ -14,49 +14,85 @@
 #include "dv_log.h"
 #include "dv_errno.h"
 #include "dv_client_conf.h"
+#include "dv_client_ssl.h"
+#include "dv_client_vpn.h"
 #include "dv_socket.h"
 #include "dv_lib.h"
 #include "dv_proto.h"
 
 #define DV_CLIENT_LOG_NAME  "DoveVPN-Client"
+#define DV_CLIENT_TUN_NUM   1
 
 static dv_tun_t dv_client_tun;
-static int dv_client_sockfd;
 
 int
 dv_client_process(dv_client_conf_t *conf)
 {
-    int         proto_type = 0;
-    int         ret = DV_ERROR;
+    const dv_proto_suite_t      *suite = NULL;
+    void                        *ssl = NULL;
+    int                         client_sockfd = -1;
+    int                         proto_type = 0;
+    int                         ret = DV_ERROR;
 
     dv_log_init(DV_CLIENT_LOG_NAME);
 
-    ret = dv_tun_init(&dv_client_tun, 1);
+    ret = dv_tun_init(&dv_client_tun, DV_CLIENT_TUN_NUM);
     if (ret != DV_OK) {
         return DV_ERROR;
     }
 
     proto_type = dv_proto_find_type(conf->cc_proto_type);
     if (proto_type < 0) {
+        DV_LOG(DV_LOG_INFO, "Find proto type failed!\n");
         return DV_ERROR;
     }
 
-    if (dv_ip_version4(conf->cc_ip)) {
-        dv_client_sockfd = dv_sk_create_v4(conf->cc_ip, conf->cc_port);
-    } else {
-        dv_client_sockfd = dv_sk_create_v6(conf->cc_ip, conf->cc_port);
+    suite = dv_proto_suite_find(proto_type);
+    if (suite == NULL) {
+        DV_LOG(DV_LOG_INFO, "Find suite failed!\n");
+        return DV_ERROR;
+    }
+    
+    ret = dv_client_ssl_init(suite, conf);
+    if (ret != DV_OK) {
+        DV_LOG(DV_LOG_INFO, "Init proto failed!\n");
+        goto out;
     }
 
-    if (dv_client_sockfd  < 0) {
+    if (dv_ip_version4(conf->cc_ip)) {
+        client_sockfd = dv_sk_create_v4(conf->cc_ip, conf->cc_port);
+    } else {
+        client_sockfd = dv_sk_create_v6(conf->cc_ip, conf->cc_port);
+    }
+
+    if (client_sockfd < 0) {
+        goto out;
+    }
+
+    ssl = dv_client_ssl_conn_create(suite, client_sockfd);
+    if (ssl == NULL) {
         goto out;
     }
 
     /* get and set tunnel ip via TLS */
+    ret = dv_client_set_tun_ip(suite, ssl);
+    if (ret != DV_OK) {
+        goto out;
+    }
+
     /* add tun fd and sockfd to epoll */
+
     sleep(10);
     ret = DV_OK;
-    close(dv_client_sockfd);
 out:
+    if (ssl != NULL) {
+        suite->ps_ssl_free(ssl);
+    }
+
+    if (client_sockfd >= 0) {
+        close(client_sockfd);
+    }
+    dv_client_ssl_exit(suite);
     dv_tun_exit(&dv_client_tun, 1);
     dv_log_exit();
     return ret;
