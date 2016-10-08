@@ -16,6 +16,9 @@
 #include "dv_types.h"
 #include "dv_errno.h"
 #include "dv_lib.h"
+#include "dv_proto.h"
+#include "dv_server_conf.h"
+#include "dv_server_cycle.h"
 
 static const char *
 dv_program_version = "1.0.0";//PACKAGE_STRING;
@@ -23,23 +26,15 @@ dv_program_version = "1.0.0";//PACKAGE_STRING;
 static const struct option 
 dv_long_opts[] = {
 	{"help", 0, 0, 'H'},
-	{"client", 0, 0, 'C'},
-	{"server", 0, 0, 'S'},
-	{"address", 0, 0, 'a'},
-	{"port", 0, 0, 'p'},
-	{"certificate", 0, 0, 'c'},
-	{"key", 0, 0, 'k'},
+	{"daemonize", 0, 0, 'd'},
+	{"config", 0, 0, 'c'},
 	{0, 0, 0, 0}
 };
 
 static const char *
 dv_options[] = {
-	"--address      -a	IP address for SSL communication\n",	
-	"--port         -p	Port for SSL communication\n",	
-	"--certificate  -c	certificate file\n",	
-	"--key          -k	private key file\n",	
-	"--client       -C	Client use openssl lib\n",	
-	"--server       -S	Server use openssl lib\n",	
+	"--config       -c	configure file\n",	
+	"--daemonize    -d	daemonize process\n",	
 	"--help         -H	Print help information\n",	
 };
 
@@ -57,12 +52,16 @@ dv_help(void)
 }
 
 static const char *
-dv_optstring = "HCSa:p:c:k:";
+dv_optstring = "Hdc:";
 
 int
 main(int argc, char **argv)  
 {
+    char                    *cf = NULL;
+    dv_srv_conf_t           conf = {};
     int                     c = 0;
+    int                     d = 0;
+    int                     ret = 0;
 
     while((c = getopt_long(argc, argv, 
                     dv_optstring,  dv_long_opts, NULL)) != -1) {
@@ -71,11 +70,37 @@ main(int argc, char **argv)
                 dv_help();
                 return DV_OK;
 
+            case 'd':
+                d = 1;
+                break;
+
+            case 'c':
+                cf = optarg;
+                break;
+
             default:
                 dv_help();
                 return -DV_ERROR;
         }
     }
 
-    return 0;
+    if (cf == NULL) {
+        fprintf(stderr, "Please input configure file by -c!\n");
+        return -DV_ERROR;
+    }
+
+    ret = dv_srv_conf_parse(&conf, cf);
+    if (ret != DV_OK) {
+        fprintf(stderr, "Parse %s failed!\n", cf);
+        return -DV_ERROR;
+    }
+
+    if (d) {
+        if (dv_process_daemonize() != DV_OK) {
+            fprintf(stderr, "Daemonize failed!\n");
+            return -DV_ERROR;
+        }
+    }
+
+    return -dv_server_cycle(&conf);
 }
