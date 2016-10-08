@@ -66,6 +66,7 @@ dv_client_process(dv_client_conf_t *conf)
     }
 
     if (client_sockfd < 0) {
+        DV_LOG(DV_LOG_INFO, "Sk create failed!\n");
         goto out;
     }
 

@@ -37,7 +37,7 @@ dv_client_ssl_init(const dv_proto_suite_t *suite, dv_client_conf_t *conf)
     }
  
     dv_client_ctx = ctx;
-    suite->ps_set_verify(ctx, suite->ps_verify_mode, conf->cc_server_cert);
+    suite->ps_set_verify(ctx, suite->ps_verify_mode, conf->cc_ca);
     return DV_OK;
 
 err:
