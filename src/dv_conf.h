@@ -6,7 +6,9 @@
 
 #include "dv_types.h"
 
-#define NTS_CONF_NAME_LEN       1024
+#define DV_IP_ADDRESS_LEN       32
+#define DV_CONF_STR_LEN         256
+
 
 typedef struct _dv_conf_parse_t {
     const char  *cp_name;

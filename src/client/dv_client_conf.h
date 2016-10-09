@@ -2,9 +2,7 @@
 #define __DV_CLIENT_CONF_H__
 
 #include "dv_types.h"
-
-#define DV_IP_ADDRESS_LEN   32
-#define DV_CONF_STR_LEN     256
+#include "dv_conf.h"
 
 typedef struct _dv_client_conf_t {
     char                        cc_proto_type[DV_CONF_STR_LEN];
