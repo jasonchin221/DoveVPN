@@ -25,10 +25,10 @@ typedef struct _dv_event_register_t {
     int             er_sockfd;
 }dv_event_register_t;
 
-extern dv_event_t* dv_event_create(dv_pool_t *pool);
+extern dv_event_t *dv_event_create(void);
 extern void dv_event_set(int s, dv_event_t *event, short type);
 extern void dv_event_set_read(int s, dv_event_t *event);
 extern void dv_event_set_write(int s, dv_event_t *event);
-extern dv_int dv_event_add(dv_event_t *event);
+extern int dv_event_add(dv_event_t *event);
 
 #endif

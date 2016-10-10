@@ -1,8 +1,10 @@
 #include <stdlib.h>
 
 #include "dv_event.h"
+#include "dv_errno.h"
 #include "dv_types.h"
 #include "dv_log.h"
+#include "dv_mem.h"
 
 /* the global event_base */
 static struct event_base *
@@ -38,7 +40,7 @@ dv_event_set(int s, dv_event_t *event, short type)
     event->et_ev = event_new(dv_event_base, s, type, 
                     event->et_handler, (void *)event);
     if (event->et_ev == NULL) {
-        dv_log("Event_new failed!\n");
+        DV_LOG(DV_LOG_NOTICE, "Event_new failed!\n");
     }
 }
 
@@ -54,7 +56,7 @@ dv_event_set_write(int s, dv_event_t *event)
     dv_event_set(s, event, EV_WRITE);
 }
 
-dv_int 
+int 
 dv_event_add(dv_event_t *event)
 {
     int  err;
@@ -67,7 +69,7 @@ dv_event_add(dv_event_t *event)
     return DV_OK;
 }
 
-dv_int 
+int 
 dv_event_del(dv_event_t *event)
 {
     int  err;
@@ -88,13 +90,13 @@ dv_event_del(dv_event_t *event)
  * NULL for failed.
  */
 dv_event_t* 
-dv_event_create(dv_pool_t *pool)
+dv_event_create(void)
 {
     dv_event_t* event;
 
-    event = dv_palloc(pool, sizeof(*event));
+    event = dv_calloc(sizeof(*event));
     if (!event) {
-        dv_log("Malloc event failed!\n");
+        DV_LOG(DV_LOG_NOTICE, "Malloc event failed!\n");
         return NULL;
     }
 
@@ -137,11 +139,11 @@ dv_event_destroy(dv_event_t* event)
         dv_buffer_destroy(event->buf);
         event->buf = NULL;
     }
-#endif
 
     if (event->et_flags & DV_EVENT_FLAGS_NEED_FREE) {
         dv_mem_free(event);
     }
+#endif
 
     return DV_OK;
 }
@@ -205,7 +207,7 @@ dv_event_remove_registered(void)
  *
  * return DV_OKg on success
  */
-static void
+void
 dv_event_exit(void)
 {
     //dv_event_remove_registered();
@@ -225,7 +227,7 @@ dv_event_set_timer(dv_event_t *tmout)
     tmout->et_ev = evtimer_new(dv_event_base, tmout->et_handler, 
                     (void*)tmout);
     if (tmout->et_ev == NULL) {
-        dv_log("Evtime_new failed!\n");
+        DV_LOG(DV_LOG_INFO, "Evtime_new failed!\n");
     }
 }
 
