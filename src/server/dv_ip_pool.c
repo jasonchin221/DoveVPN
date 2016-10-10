@@ -5,12 +5,10 @@
 #include <sys/shm.h>
 
 #include "dv_types.h"
-#include "dv_key_hash.h"
 #include "dv_mem.h"
 #include "dv_sys.h"
 #include "dv_log.h"
 #include "dv_debug.h"
-#include "dv_key.h"
 
 #define DV_KEY_HASH_SHM_KEY    (IPC_PRIVATE)
 
@@ -20,25 +18,19 @@ static dv_key_cache_t *dv_key_cache_pool_head;
 static dv_u32 dv_hash_table_size;
 static int dv_key_hash_shmid;
 
-static dv_u32
-dv_hash_value(char *uid, dv_u32 kid)
-{
-    return (kid % dv_hash_table_size);
-}
-
 int
 dv_hash_init(int max_conn)
 {
     dv_cache_pool_t    *pool = NULL;
     dv_u32             total_size = 0;
     dv_u32             i = 0;
-    int                 ret = DV_ERROR;
+    int                ret = DV_ERROR;
 
     DV_ASSERT(dv_hash_table == NULL);
 
     dv_hash_table_size = max_conn;
-    total_size = (sizeof(*dv_hash_table) + sizeof(dv_key_cache_t)) *
-        dv_hash_table_size + sizeof(dv_cache_pool_t);
+    total_size = (sizeof(dv_subnet_ip_t)) *
+        dv_hash_table_size + sizeof(dv_ip_pool_t)*2;
 
     if ((dv_key_hash_shmid = shmget(DV_KEY_HASH_SHM_KEY, total_size,
                     IPC_CREAT | 0600)) < 0) {
@@ -49,14 +41,6 @@ dv_hash_init(int max_conn)
 
     if ((dv_hash_table = shmat(dv_key_hash_shmid, NULL, 0)) == (void *)-1) {
         goto out;
-    }
-
-    for (i = 0; i < dv_hash_table_size; i++) {
-        INIT_LIST_HEAD(&dv_hash_table[i].nt_list_head);
-        if (pthread_spin_init(&dv_hash_table[i].nt_lock,
-                    PTHREAD_PROCESS_SHARED) != 0) {
-            goto out;
-        }
     }
 
     pool = (void *)(dv_hash_table + dv_hash_table_size); 
