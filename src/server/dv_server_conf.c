@@ -2,6 +2,7 @@
 #include "dv_server_conf.h"
 #include "dv_errno.h"
 #include "dv_lib.h"
+#include "dv_log.h"
 
 #define DV_SRV_CONF_NETWORK         "network"
 #define DV_SRV_CONF_SUBNET_IP       "subnet-ip"
@@ -64,6 +65,9 @@ dv_srv_conf_parse(dv_srv_conf_t *conf, char *file)
     if (ret != DV_OK) {
         return DV_ERROR;
     }
+
+    DV_LOG(DV_LOG_NOTICE, "ip = %s, mask = %d\n", conf->sc_subnet_ip, 
+            conf->sc_subnet_mask);
 
     return DV_OK;
 }
