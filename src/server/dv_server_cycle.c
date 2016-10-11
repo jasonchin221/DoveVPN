@@ -9,7 +9,7 @@ dv_server_cycle(dv_srv_conf_t *conf)
 {
     int     ret = DV_ERROR;
 
-    ret = dv_srv_init();
+    ret = dv_srv_init(conf);
     if (ret != DV_OK) {
         goto out;
     }
