@@ -16,15 +16,70 @@
 static dv_ip_pool_t *dv_ip_pool;
 static int dv_ip_pool_shmid;
 
+static dv_u32 dv_get_ipv4_num(int mask);
+static int dv_gen_ipv4(char *ip, dv_u32 len, char *subnet, dv_u32 seq);
+static dv_u32 dv_get_ipv6_num(int mask);
+static int dv_gen_ipv6(char *ip, dv_u32 len, char *subnet, dv_u32 seq);
+
+static dv_pool_create_t dv_ipv4_pool = {
+    .pc_get_ip_num = dv_get_ipv4_num,
+    .pc_gen_ip = dv_gen_ipv4,
+};
+
+static dv_pool_create_t dv_ipv6_pool = {
+    .pc_get_ip_num = dv_get_ipv6_num,
+    .pc_gen_ip = dv_gen_ipv6,
+};
+
+static dv_u32
+dv_get_ipv4_num(int mask)
+{
+    dv_u32          num = 0;
+
+    return num;
+}
+
+static int
+dv_gen_ipv4(char *ip, dv_u32 len, char *subnet, dv_u32 seq)
+{
+    return DV_OK;
+}
+
+static dv_u32
+dv_get_ipv6_num(int mask)
+{
+    return 0;
+}
+
+static int
+dv_gen_ipv6(char *ip, dv_u32 len, char *subnet, dv_u32 seq)
+{
+    return DV_ERROR;
+}
+
 int
-dv_ip_pool_init(int total_num)
+dv_ip_pool_init(char *subnet_ip, dv_u32 len, int mask)
 {
     dv_subnet_ip_t      *ip_array; 
+    dv_pool_create_t    *create = NULL;
     dv_u32              total_size = 0;
     dv_u32              i = 0;
+    dv_u32              total_num = 0;
     int                 ret = DV_ERROR;
 
     dv_assert(dv_ip_pool == NULL);
+
+    if (dv_ip_version4(subnet_ip)) {
+        create = &dv_ipv4_pool;
+    } else {
+        create = &dv_ipv6_pool;
+    }
+
+    total_num = create->pc_get_ip_num(mask);
+    if (total_num == 0) {
+        DV_LOG(DV_LOG_EMERG, "Total ip number of ip pool error!\n");
+        return DV_ERROR;
+    }
 
     total_size = (sizeof(dv_subnet_ip_t)) * total_num + sizeof(*dv_ip_pool);
     if ((dv_ip_pool_shmid = shmget(DV_KEY_HASH_SHM_KEY, total_size,
@@ -45,10 +100,15 @@ dv_ip_pool_init(int total_num)
     INIT_LIST_HEAD(&dv_ip_pool->ip_list_head);
     ip_array = (void *)(dv_ip_pool + 1);
     for (i = 0; i < total_num; i++, ip_array++) {
+        ret = create->pc_gen_ip(ip_array->si_ip, sizeof(ip_array->si_ip),
+                subnet_ip, i);
+        if (ret != DV_OK) {
+            goto out;
+        }
         list_add_tail(&ip_array->si_list_head, &dv_ip_pool->ip_list_head);
     }
 
-    DV_LOG(DV_LOG_NOTICE, "Alloc key cache(%d MB) OK!\n", 
+    DV_LOG(DV_LOG_NOTICE, "Alloc ip pool(%d MB) OK!\n", 
             total_size/1000000);
     return DV_OK;
 
