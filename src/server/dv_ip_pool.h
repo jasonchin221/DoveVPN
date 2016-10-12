@@ -20,7 +20,8 @@ typedef struct _dv_ip_pool_t {
 
 typedef struct _dv_pool_create_t {
     dv_u32      (*pc_get_ip_num)(int mask);
-    int         (*pc_gen_ip)(char *ip, dv_u32 len, char *subnet, dv_u32 seq);
+    int         (*pc_gen_ip)(char *ip, dv_u32 len, char *subnet,
+                    int subnet_mask, dv_u32 seq);
 } dv_pool_create_t; 
 
 

@@ -23,6 +23,18 @@
 #define DV_NTOHS(a)     ntohs(a)
 #define DV_NTOHL(a)     ntohl(a)
 
+static inline dv_u32
+dv_pow(dv_u32 x, dv_u32 y)
+{
+    dv_u32      r = 1;
+
+    for (; y > 0; y--) {
+        r *= x;
+    }
+
+    return r;
+}
+
 static inline int 
 dv_ip_version4(char *ip)
 {

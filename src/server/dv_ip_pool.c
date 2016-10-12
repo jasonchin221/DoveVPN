@@ -3,6 +3,9 @@
 #include <string.h>
 #include <sys/ipc.h>
 #include <sys/shm.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
 
 #include "dv_types.h"
 #include "dv_log.h"
@@ -11,15 +14,18 @@
 #include "dv_errno.h"
 #include "dv_lib.h"
 
-#define DV_KEY_HASH_SHM_KEY    (IPC_PRIVATE)
+#define DV_KEY_HASH_SHM_KEY     (IPC_PRIVATE)
+#define DV_IPV4_ADDR_LEN        32
 
 static dv_ip_pool_t *dv_ip_pool;
 static int dv_ip_pool_shmid;
 
 static dv_u32 dv_get_ipv4_num(int mask);
-static int dv_gen_ipv4(char *ip, dv_u32 len, char *subnet, dv_u32 seq);
+static int dv_gen_ipv4(char *ip, dv_u32 len, char *subnet,
+        int subnet_mask, dv_u32 seq);
 static dv_u32 dv_get_ipv6_num(int mask);
-static int dv_gen_ipv6(char *ip, dv_u32 len, char *subnet, dv_u32 seq);
+static int dv_gen_ipv6(char *ip, dv_u32 len, char *subnet,
+        int subnet_mask, dv_u32 seq);
 
 static dv_pool_create_t dv_ipv4_pool = {
     .pc_get_ip_num = dv_get_ipv4_num,
@@ -34,14 +40,32 @@ static dv_pool_create_t dv_ipv6_pool = {
 static dv_u32
 dv_get_ipv4_num(int mask)
 {
-    dv_u32          num = 0;
+    if (mask >= DV_IPV4_ADDR_LEN) {
+        return 0;
+    }
 
-    return num;
+    return dv_pow(2, DV_IPV4_ADDR_LEN - mask);
 }
 
 static int
-dv_gen_ipv4(char *ip, dv_u32 len, char *subnet, dv_u32 seq)
+dv_gen_ipv4(char *ip, dv_u32 len, char *subnet, int subnet_mask, dv_u32 seq)
 {
+    struct in_addr  str_ip = {};
+    dv_u32          addr = 0;
+    dv_u32          mask = 0;
+    int             i = 0;
+
+    for (i = 0; i < subnet_mask; i++) {
+        mask |= (1 << (DV_IPV4_ADDR_LEN - 1 - i));
+    }
+ 
+    addr = ntohl(inet_addr(subnet));
+    addr &= mask;
+    addr += seq;
+    addr = htonl(addr);
+    memcpy(&str_ip, &addr, sizeof(addr));
+    snprintf(ip, len, "%s", inet_ntoa(str_ip));
+
     return DV_OK;
 }
 
@@ -52,7 +76,7 @@ dv_get_ipv6_num(int mask)
 }
 
 static int
-dv_gen_ipv6(char *ip, dv_u32 len, char *subnet, dv_u32 seq)
+dv_gen_ipv6(char *ip, dv_u32 len, char *subnet, int subnet_mask, dv_u32 seq)
 {
     return DV_ERROR;
 }
@@ -101,7 +125,7 @@ dv_ip_pool_init(char *subnet_ip, dv_u32 len, int mask)
     ip_array = (void *)(dv_ip_pool + 1);
     for (i = 0; i < total_num; i++, ip_array++) {
         ret = create->pc_gen_ip(ip_array->si_ip, sizeof(ip_array->si_ip),
-                subnet_ip, i);
+                subnet_ip, mask, i);
         if (ret != DV_OK) {
             goto out;
         }
