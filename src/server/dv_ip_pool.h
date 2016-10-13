@@ -15,7 +15,6 @@ typedef struct _dv_subnet_ip_t {
 
 typedef struct _dv_ip_pool_t {
     struct list_head    ip_list_head;
-    pthread_spinlock_t  ip_lock;
 } dv_ip_pool_t; 
 
 typedef struct _dv_pool_create_t {

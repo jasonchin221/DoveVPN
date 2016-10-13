@@ -6,6 +6,7 @@
 
 typedef struct _dv_srv_conf_t {
     int         sc_port;
+    int         sc_daemon;
     char        sc_vnic_ip[DV_IP_ADDRESS_LEN];
     char        sc_subnet_ip[DV_IP_ADDRESS_LEN];
     int         sc_subnet_mask;

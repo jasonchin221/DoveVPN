@@ -14,6 +14,8 @@
 #define DV_SRV_CONF_CERT            "cert"
 #define DV_SRV_CONF_KEY             "key"
 #define DV_SRV_CONF_CA              "ca"
+#define DV_SRV_CONF_PROCESSES       "processes"
+#define DV_SRV_CONF_DAEMON          "daemon"
 
 static dv_srv_conf_t dv_srv_conf;
 
@@ -54,6 +56,19 @@ static dv_conf_parse_t dv_srv_conf_network[] = {
 
 #define DV_SRV_CONF_NETWORK_ARRAY_SIZE DV_ARRAY_SIZE(dv_srv_conf_network)
 
+static dv_conf_parse_t dv_srv_conf_processes[] = {
+    {
+        .cp_name = DV_SRV_CONF_DAEMON,
+        .cp_len = sizeof(dv_srv_conf.sc_daemon),
+        .cp_offset = dv_offsetof(dv_srv_conf_t, sc_daemon),
+        .cp_type = json_type_int,
+        .cp_necessary = DV_TRUE,
+        .cp_parse = dv_conf_parse_int,
+    },
+};
+
+#define DV_SRV_CONF_PROCESSES_ARRAY_SIZE DV_ARRAY_SIZE(dv_srv_conf_processes)
+
 
 int 
 dv_srv_conf_parse(dv_srv_conf_t *conf, char *file)
@@ -62,6 +77,12 @@ dv_srv_conf_parse(dv_srv_conf_t *conf, char *file)
 
     ret = dv_config_parse(file, conf, DV_SRV_CONF_NETWORK, 
         dv_srv_conf_network, DV_SRV_CONF_NETWORK_ARRAY_SIZE);
+    if (ret != DV_OK) {
+        return DV_ERROR;
+    }
+
+    ret = dv_config_parse(file, conf, DV_SRV_CONF_PROCESSES, 
+        dv_srv_conf_processes, DV_SRV_CONF_PROCESSES_ARRAY_SIZE);
     if (ret != DV_OK) {
         return DV_ERROR;
     }

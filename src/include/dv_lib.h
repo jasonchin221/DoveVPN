@@ -4,6 +4,8 @@
 #include <arpa/inet.h>
 #include <string.h>
 
+#include "dv_types.h"
+
 #define dv_offsetof(TYPE, MEMBER) ((size_t) &((TYPE *)0)->MEMBER)
 
 /*
