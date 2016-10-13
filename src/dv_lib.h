@@ -44,5 +44,6 @@ dv_ip_version4(char *ip)
 }
 
 extern int dv_process_daemonize(void);
+extern dv_u32 dv_get_cpu_num(void);
 
 #endif

@@ -21,7 +21,6 @@
 #include "dv_proto.h"
 
 #define DV_CLIENT_LOG_NAME  "DoveVPN-Client"
-#define DV_CLIENT_TUN_NUM   1
 
 static dv_tun_t dv_client_tun;
 
@@ -36,7 +35,7 @@ dv_client_process(dv_client_conf_t *conf)
 
     dv_log_init(DV_CLIENT_LOG_NAME);
 
-    ret = dv_tun_init(&dv_client_tun, DV_CLIENT_TUN_NUM);
+    ret = dv_tun_init(&dv_client_tun);
     if (ret != DV_OK) {
         return DV_ERROR;
     }
@@ -94,7 +93,7 @@ out:
         close(client_sockfd);
     }
     dv_client_ssl_exit(suite);
-    dv_tun_exit(&dv_client_tun, 1);
+    dv_tun_exit(&dv_client_tun);
     dv_log_exit();
     return ret;
 }

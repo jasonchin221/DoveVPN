@@ -12,7 +12,9 @@ typedef struct _dv_tun_t {
     char        tn_name[DV_DEV_NAME_LEN + 1];
 } dv_tun_t;
 
-extern int dv_tun_init(dv_tun_t *tun, dv_u8 num);
-extern void dv_tun_exit(dv_tun_t *tun, dv_u8 num);
+extern int dv_tun_dev_create(dv_tun_t *tun, int i);
+extern void dv_tun_dev_destroy(dv_tun_t *tun);
+extern int dv_tun_init(dv_tun_t *tun);
+extern void dv_tun_exit(dv_tun_t *tun);
 
 #endif

@@ -16,7 +16,7 @@
 #include "dv_types.h"
 #include "dv_errno.h"
 
-static int
+int
 dv_tun_dev_create(dv_tun_t *tun, int i)
 {
     struct ifreq    ifr = {};
@@ -44,7 +44,7 @@ dv_tun_dev_create(dv_tun_t *tun, int i)
     return DV_OK;
 }
 
-static void
+void
 dv_tun_dev_destroy(dv_tun_t *tun)
 {
     if (ioctl(tun->tn_fd, TUNSETPERSIST, 0) < 0) {
@@ -56,33 +56,26 @@ dv_tun_dev_destroy(dv_tun_t *tun)
 }
 
 int
-dv_tun_init(dv_tun_t *tun, dv_u8 num)
+dv_tun_init(dv_tun_t *tun)
 {
-    dv_u8       i = 0;
     int         ret = DV_OK;
 
-    for (i = 0; i < num; i++, tun++) {
-        ret = dv_tun_dev_create(tun, i);
-        if (ret != DV_OK) {
-            tun->tn_fd = -1;
-            return DV_ERROR;
-        }
+    ret = dv_tun_dev_create(tun, 0);
+    if (ret != DV_OK) {
+        tun->tn_fd = -1;
+        return DV_ERROR;
     }
 
     return DV_OK;
 }
     
 void
-dv_tun_exit(dv_tun_t *tun, dv_u8 num)
+dv_tun_exit(dv_tun_t *tun)
 {
-    dv_u8       i = 0;
-
-    for (i = 0; i < num; i++, tun++) {
-        if (tun->tn_fd < 0) {
-            break;
-        }
-        dv_tun_dev_destroy(tun);
+    if (tun->tn_fd < 0) {
+        return;
     }
+    dv_tun_dev_destroy(tun);
 }
  
 #if 0
