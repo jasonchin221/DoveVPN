@@ -44,7 +44,7 @@ dv_get_ipv4_num(int mask)
         return 0;
     }
 
-    return dv_pow(2, DV_IPV4_ADDR_LEN - mask);
+    return dv_pow(2, DV_IPV4_ADDR_LEN - mask) - 2;
 }
 
 static int
@@ -116,7 +116,10 @@ dv_ip_pool_init(char *subnet_ip, dv_u32 len, int mask)
 
     dv_subnet_ip_array = ip_array;
     INIT_LIST_HEAD(&pool->ip_list_head);
-    for (i = 0; i < total_num; i++, ip_array++) {
+    for (i = 1; i < total_num + 2; i++, ip_array++) {
+        if ((i & 0xFF) == 0xFF) {
+            continue;
+        }
         ret = create->pc_gen_ip(ip_array->si_ip, sizeof(ip_array->si_ip),
                 subnet_ip, mask, i);
         if (ret != DV_OK) {
