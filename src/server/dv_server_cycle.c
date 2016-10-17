@@ -6,7 +6,7 @@
 #include "dv_ip_pool.h"
 #include "dv_tun.h"
 
-static dv_tun_t dv_srv_tun {
+static dv_tun_t dv_srv_tun = {
     .tn_fd = -1,
 };
 
