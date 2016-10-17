@@ -7,6 +7,7 @@
 
 #define DV_READ_EVENT               EV_READ 
 #define DV_WRITE_EVENT              EV_WRITE
+#define DV_EVENT_FLAGS_NEED_FREE    0x01
 
 typedef event_callback_fn dv_event_handler;
 

@@ -100,6 +100,8 @@ dv_event_create(void)
         return NULL;
     }
 
+    event->et_flags |= DV_EVENT_FLAGS_NEED_FREE;
+
     return event;
 }
 
@@ -139,11 +141,11 @@ dv_event_destroy(dv_event_t* event)
         dv_buffer_destroy(event->buf);
         event->buf = NULL;
     }
+#endif
 
     if (event->et_flags & DV_EVENT_FLAGS_NEED_FREE) {
-        dv_mem_free(event);
+        dv_free(event);
     }
-#endif
 
     return DV_OK;
 }

@@ -44,7 +44,8 @@ dv_get_ipv4_num(int mask)
         return 0;
     }
 
-    return dv_pow(2, DV_IPV4_ADDR_LEN - mask) - 2;
+    /* x.x.x.0, x.x.x.1, x.x.x.255 not used */
+    return dv_pow(2, DV_IPV4_ADDR_LEN - mask) - 3;
 }
 
 static int
@@ -116,7 +117,8 @@ dv_ip_pool_init(char *subnet_ip, dv_u32 len, int mask)
 
     dv_subnet_ip_array = ip_array;
     INIT_LIST_HEAD(&pool->ip_list_head);
-    for (i = 1; i < total_num + 2; i++, ip_array++) {
+    for (i = 2; i < total_num + 3; i++, ip_array++) {
+        /* skip x.x.x.255 */
         if ((i & 0xFF) == 0xFF) {
             continue;
         }
