@@ -6,9 +6,14 @@
 #include "dv_log.h"
 #include "dv_mem.h"
 
+#define DV_SOCKET_MAX_NUM       110000
+
 /* the global event_base */
 static struct event_base *
 dv_event_base = NULL;
+
+static dv_event_register_t
+dv_event_register_array[DV_SOCKET_MAX_NUM] = {};
 
 void
 dv_process_events(void)
@@ -89,7 +94,7 @@ dv_event_del(dv_event_t *event)
  * return address of new event on success;
  * NULL for failed.
  */
-dv_event_t* 
+dv_event_t * 
 dv_event_create(void)
 {
     dv_event_t* event;
@@ -105,13 +110,6 @@ dv_event_create(void)
     return event;
 }
 
-
-
-#if 0
-static dv_event_register_t
-dv_event_register_array[DV_SOCKET_MAX_NUM] = {};
-#endif
-
 /**
  * dv_event_destroy - destroy an event
  * @event: event to destroy
@@ -121,7 +119,7 @@ dv_event_register_array[DV_SOCKET_MAX_NUM] = {};
  * -1 for failed.
  */
 int 
-dv_event_destroy(dv_event_t* event)
+dv_event_destroy(dv_event_t *event)
 {
     if (!event) {
         /*TODO: add error log */
@@ -132,11 +130,11 @@ dv_event_destroy(dv_event_t* event)
         event_free(event->et_ev);
     }
 
-#if 0
     if (event->timeout) {
-        free(event->timeout);
+        dv_free(event->timeout);
     }
 
+#if 0
     if (event->buf) {
         dv_buffer_destroy(event->buf);
         event->buf = NULL;
@@ -150,7 +148,6 @@ dv_event_destroy(dv_event_t* event)
     return DV_OK;
 }
 
-#if 0
 int
 dv_event_register(dv_event_register_t *event) 
 {
@@ -174,7 +171,7 @@ int
 dv_event_unregister(int sockfd) 
 {
     dv_event_register_t *er = NULL;
-    int i = 0;
+    int                 i = 0;
 
     for (i = 0; i < DV_SOCKET_MAX_NUM; i++) {
         er = &dv_event_register_array[i];
@@ -189,6 +186,7 @@ dv_event_unregister(int sockfd)
     return DV_ERROR;
 }
 
+#if 0
 static void
 dv_event_remove_registered(void)
 {
@@ -213,7 +211,6 @@ void
 dv_event_exit(void)
 {
     //dv_event_remove_registered();
-
     if (dv_event_base != NULL) {
         event_base_free(dv_event_base);
     }

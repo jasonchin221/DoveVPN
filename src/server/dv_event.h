@@ -24,7 +24,7 @@ typedef struct _dv_event_t {
 typedef struct _dv_event_register_t {
     dv_event_t      *er_ev;
     int             er_sockfd;
-}dv_event_register_t;
+} dv_event_register_t;
 
 extern dv_event_t *dv_event_create(void);
 extern void dv_event_set(int s, dv_event_t *event, short type);
