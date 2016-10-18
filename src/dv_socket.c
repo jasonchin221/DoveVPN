@@ -1,6 +1,7 @@
 #include <stdlib.h>
 #include <errno.h>
 #include <netinet/in.h>
+#include <arpa/inet.h>
 #include <sys/socket.h>
 
 #include "dv_types.h"
@@ -45,7 +46,7 @@ dv_sk_connect_v6(const char *dip, dv_u16 dport)
     }
 
     dest.sin6_port = DV_HTONS(dport);
-    //dest.sin6_addr.s_addr = inet_addr(dip);
+     inet_pton(AF_INET6, dip, &dest.sin6_addr);
     if (connect(sockfd, (struct sockaddr *)&dest, sizeof(dest)) != 0) {
         DV_LOG(DV_LOG_INFO, "Connect to dest  failed(%s)!\n", strerror(errno));
         return DV_ERROR;
@@ -68,7 +69,11 @@ dv_sk_bind_v4(const char *dip, dv_u16 dport)
     }
 
     dest.sin_port = DV_HTONS(dport);
-    dest.sin_addr.s_addr = inet_addr(dip);
+    if (dip == NULL) {
+        dest.sin_addr.s_addr = INADDR_ANY;
+    } else {
+        dest.sin_addr.s_addr = inet_addr(dip);
+    }
     if (bind(sockfd, (struct sockaddr *)&dest, sizeof(dest)) != 0) {
         DV_LOG(DV_LOG_INFO, "Connect to dest  failed(%s)!\n", strerror(errno));
         return DV_ERROR;
@@ -91,7 +96,13 @@ dv_sk_bind_v6(const char *dip, dv_u16 dport)
     }
 
     dest.sin6_port = DV_HTONS(dport);
-    //dest.sin6_addr.s_addr = inet_addr(dip);
+
+    if (dip == NULL) {
+        dest.sin6_addr = in6addr_any;
+    } else {
+        inet_pton(AF_INET6, dip, &dest.sin6_addr);
+    }
+
     if (bind(sockfd, (struct sockaddr *)&dest, sizeof(dest)) != 0) {
         DV_LOG(DV_LOG_INFO, "Connect to dest  failed(%s)!\n", strerror(errno));
         return DV_ERROR;

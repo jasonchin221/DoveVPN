@@ -13,7 +13,7 @@ static dv_tun_t dv_srv_tun = {
 
 static int
 dv_srv_create_and_set_tun(dv_tun_t *tun, int seq, int mask,
-            char *subnet_ip, dv_u32 subet_ip_size)
+            char *subnet_ip, dv_u32 subnet_ip_size)
 {
     dv_subnet_ip_t  *ip = NULL;
     int             ret = DV_ERROR;
