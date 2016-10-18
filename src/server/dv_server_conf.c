@@ -44,14 +44,6 @@ static dv_conf_parse_t dv_srv_conf_network[] = {
         .cp_necessary = DV_TRUE,
         .cp_parse = dv_conf_parse_int,
     },
-    {
-        .cp_name = DV_SRV_CONF_VNIC_IP,
-        .cp_len = sizeof(dv_srv_conf.sc_vnic_ip),
-        .cp_offset = dv_offsetof(dv_srv_conf_t, sc_vnic_ip),
-        .cp_type = json_type_string,
-        .cp_necessary = DV_TRUE,
-        .cp_parse = dv_conf_parse_str,
-    },
 };
 
 #define DV_SRV_CONF_NETWORK_ARRAY_SIZE DV_ARRAY_SIZE(dv_srv_conf_network)

@@ -59,9 +59,9 @@ dv_client_process(dv_client_conf_t *conf)
     }
 
     if (dv_ip_version4(conf->cc_ip)) {
-        client_sockfd = dv_sk_create_v4(conf->cc_ip, conf->cc_port);
+        client_sockfd = dv_sk_connect_v4(conf->cc_ip, conf->cc_port);
     } else {
-        client_sockfd = dv_sk_create_v6(conf->cc_ip, conf->cc_port);
+        client_sockfd = dv_sk_connect_v6(conf->cc_ip, conf->cc_port);
     }
 
     if (client_sockfd < 0) {
