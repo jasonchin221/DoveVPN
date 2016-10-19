@@ -46,7 +46,7 @@ dv_sk_connect_v6(const char *dip, dv_u16 dport)
     }
 
     dest.sin6_port = DV_HTONS(dport);
-     inet_pton(AF_INET6, dip, &dest.sin6_addr);
+    inet_pton(AF_INET6, dip, &dest.sin6_addr);
     if (connect(sockfd, (struct sockaddr *)&dest, sizeof(dest)) != 0) {
         DV_LOG(DV_LOG_INFO, "Connect to dest  failed(%s)!\n", strerror(errno));
         return DV_ERROR;
@@ -69,13 +69,13 @@ dv_sk_bind_v4(const char *dip, dv_u16 dport)
     }
 
     dest.sin_port = DV_HTONS(dport);
-    if (dip == NULL) {
+    if (dip == NULL || strlen(dip) == 0) {
         dest.sin_addr.s_addr = INADDR_ANY;
     } else {
         dest.sin_addr.s_addr = inet_addr(dip);
     }
     if (bind(sockfd, (struct sockaddr *)&dest, sizeof(dest)) != 0) {
-        DV_LOG(DV_LOG_INFO, "Connect to dest  failed(%s)!\n", strerror(errno));
+        DV_LOG(DV_LOG_INFO, "Bind to dest failed(%s)!\n", strerror(errno));
         return DV_ERROR;
     }
  
@@ -97,14 +97,14 @@ dv_sk_bind_v6(const char *dip, dv_u16 dport)
 
     dest.sin6_port = DV_HTONS(dport);
 
-    if (dip == NULL) {
+    if (dip == NULL || strlen(dip) == 0) {
         dest.sin6_addr = in6addr_any;
     } else {
         inet_pton(AF_INET6, dip, &dest.sin6_addr);
     }
 
     if (bind(sockfd, (struct sockaddr *)&dest, sizeof(dest)) != 0) {
-        DV_LOG(DV_LOG_INFO, "Connect to dest  failed(%s)!\n", strerror(errno));
+        DV_LOG(DV_LOG_INFO, "Bind to dest  failed(%s)!\n", strerror(errno));
         return DV_ERROR;
     }
  
