@@ -95,8 +95,8 @@ dv_server_cycle(dv_srv_conf_t *conf)
 
     /* Event loop */
     printf("Before loop\n");
-    dv_process_events();
-    printf("After loop\n");
+    ret = dv_process_events();
+    printf("After loop, ret = %d\n", ret);
     ret = DV_OK;
 out:
     if (dv_srv_tun.tn_fd >= 0) {

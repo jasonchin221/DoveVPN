@@ -16,10 +16,10 @@ dv_event_base = NULL;
 static dv_event_register_t
 dv_event_register_array[DV_SOCKET_MAX_NUM] = {};
 
-void
+int
 dv_process_events(void)
 {
-    event_base_loop(dv_event_base, 0);
+    return event_base_loop(dv_event_base, 0);
 }
 
 int

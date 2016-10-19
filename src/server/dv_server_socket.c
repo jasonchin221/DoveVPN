@@ -45,6 +45,11 @@ dv_srv_add_listenning(char *ip, int (*bind)(const char *, dv_u16),
 static void
 dv_srv_read(int sock, short event, void *arg)
 {
+    dv_event_t              *ev = arg; 
+    printf("Read!\n");
+    close(sock);
+    dv_event_del(ev);
+    dv_event_destroy(ev);
 }
 
 static void
