@@ -1,7 +1,9 @@
+#include <unistd.h>
 
 #include "dv_types.h"
 #include "dv_socket.h"
 #include "dv_event.h"
+#include "dv_errno.h"
 
 #define DV_SERVER_LISTEN_NUM    100
 
@@ -60,7 +62,7 @@ dv_srv_accept(int sock, short event, void *arg, struct sockaddr *addr,
     ev = dv_event_create();
     if (ev == NULL) {
         close(accept_fd);
-        return NULL;
+        return;
     }
 
     ev->et_handler = dv_srv_read;
@@ -68,7 +70,7 @@ dv_srv_accept(int sock, short event, void *arg, struct sockaddr *addr,
     if (dv_event_add(ev) != DV_OK) {
         close(accept_fd);
         dv_event_destroy(ev);
-        return NULL;
+        return;
     }
 }
 
@@ -78,7 +80,7 @@ dv_srv_accept4(int sock, short event, void *arg)
     struct sockaddr_in      addr = {};
     socklen_t               addrlen = 0;
 
-    dv_srv_accept(sock, event, arg, &addr, &addrlen);
+    dv_srv_accept(sock, event, arg, (struct sockaddr *)&addr, &addrlen);
 }
 
 static void
@@ -87,7 +89,7 @@ dv_srv_accept6(int sock, short event, void *arg)
     struct sockaddr_in6     addr = {};
     socklen_t               addrlen = 0;
 
-    dv_srv_accept(sock, event, arg, &addr, &addrlen);
+    dv_srv_accept(sock, event, arg, (struct sockaddr *)&addr, &addrlen);
 }
 
 int

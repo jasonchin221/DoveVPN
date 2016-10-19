@@ -27,9 +27,14 @@ typedef struct _dv_event_register_t {
 } dv_event_register_t;
 
 extern dv_event_t *dv_event_create(void);
+extern int dv_event_destroy(dv_event_t *event);
+extern int dv_event_init(void);
+extern void dv_event_exit(void);
 extern void dv_event_set(int s, dv_event_t *event, short type);
 extern void dv_event_set_read(int s, dv_event_t *event);
 extern void dv_event_set_write(int s, dv_event_t *event);
 extern int dv_event_add(dv_event_t *event);
+extern int dv_event_del(dv_event_t *event);
+extern void dv_process_events(void);
 
 #endif

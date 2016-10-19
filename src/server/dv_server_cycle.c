@@ -6,10 +6,13 @@
 #include "dv_ip_pool.h"
 #include "dv_tun.h"
 #include "dv_if.h"
+#include "dv_event.h"
 
 static dv_tun_t dv_srv_tun = {
     .tn_fd = -1,
 };
+
+extern int dv_srv_socket_init(int port);
 
 static int
 dv_srv_create_and_set_tun(dv_tun_t *tun, int seq, int mask,
@@ -79,6 +82,10 @@ dv_server_cycle(dv_srv_conf_t *conf)
     }
 
     /* Libevent */
+    ret = dv_srv_socket_init(conf->sc_port);
+    if (ret != DV_OK) {
+        goto out;
+    }
 
     ret = dv_start_worker_processes(conf, dv_ncpu);
     if (ret != DV_OK) {
@@ -86,7 +93,7 @@ dv_server_cycle(dv_srv_conf_t *conf)
     }
 
     /* Event loop */
-    sleep(100);
+    dv_process_events();
     ret = DV_OK;
 out:
     if (dv_srv_tun.tn_fd >= 0) {

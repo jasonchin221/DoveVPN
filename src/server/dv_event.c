@@ -35,6 +35,21 @@ dv_event_init(void)
     return DV_OK;
 }
 
+/**
+ * dv_event_exit - exit events
+ * @
+ *
+ * return DV_OKg on success
+ */
+void
+dv_event_exit(void)
+{
+    //dv_event_remove_registered();
+    if (dv_event_base != NULL) {
+        event_base_free(dv_event_base);
+    }
+}
+
 void 
 dv_event_set(int s, dv_event_t *event, short type)
 {
@@ -201,21 +216,6 @@ dv_event_remove_registered(void)
     }
 }
 #endif
-
-/**
- * dv_event_exit - exit events
- * @
- *
- * return DV_OKg on success
- */
-void
-dv_event_exit(void)
-{
-    //dv_event_remove_registered();
-    if (dv_event_base != NULL) {
-        event_base_free(dv_event_base);
-    }
-}
 
 void 
 dv_event_set_timer(dv_event_t *tmout)
