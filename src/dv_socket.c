@@ -33,7 +33,7 @@ dv_sk_connect_v4(const char *dip, dv_u16 dport)
 }
 
 int
-dv_sk_connect_v6(const char *dip, dv_u16 dport)
+dv_sk_connect(const char *dip, dv_u16 dport)
 {
     struct sockaddr_in6     dest = {
         .sin6_family = AF_INET6,
@@ -56,34 +56,7 @@ dv_sk_connect_v6(const char *dip, dv_u16 dport)
 }
 
 int
-dv_sk_bind_v4(const char *dip, dv_u16 dport)
-{
-    struct sockaddr_in      dest = {
-        .sin_family = AF_INET,
-    };
-    int                     sockfd = 0;
-
-    sockfd = socket(AF_INET, SOCK_STREAM, 0);
-    if (sockfd < 0) {
-        return DV_ERROR;
-    }
-
-    dest.sin_port = DV_HTONS(dport);
-    if (dip == NULL || strlen(dip) == 0) {
-        dest.sin_addr.s_addr = INADDR_ANY;
-    } else {
-        dest.sin_addr.s_addr = inet_addr(dip);
-    }
-    if (bind(sockfd, (struct sockaddr *)&dest, sizeof(dest)) != 0) {
-        DV_LOG(DV_LOG_INFO, "Bind to dest failed(%s)!\n", strerror(errno));
-        return DV_ERROR;
-    }
- 
-    return sockfd;
-}
-
-int
-dv_sk_bind_v6(const char *dip, dv_u16 dport)
+dv_sk_bind(const char *dip, dv_u16 dport)
 {
     struct sockaddr_in6     dest = {
         .sin6_family = AF_INET6,

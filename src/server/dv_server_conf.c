@@ -16,6 +16,7 @@
 #define DV_SRV_CONF_CA              "ca"
 #define DV_SRV_CONF_PROCESSES       "processes"
 #define DV_SRV_CONF_DAEMON          "daemon"
+#define DV_SRV_CONF_PROTO           "proto"
 
 static dv_srv_conf_t dv_srv_conf;
 
@@ -89,6 +90,7 @@ dv_srv_conf_parse(dv_srv_conf_t *conf, char *file)
 
     DV_LOG(DV_LOG_NOTICE, "ip = %s, mask = %d\n", conf->sc_subnet_ip, 
             conf->sc_subnet_mask);
+    return dv_cipher_conf_parse(&conf->sc_proto, DV_SRV_CONF_PROTO, file);
 
     return DV_OK;
 }

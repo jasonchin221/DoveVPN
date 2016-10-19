@@ -8,13 +8,12 @@
 #define DV_SERVER_LISTEN_NUM    100
 
 static dv_event_t *
-dv_srv_add_listenning(char *ip, int (*bind)(const char *, dv_u16),
-            dv_event_handler callback, int port)
+dv_srv_add_listenning(char *ip, dv_event_handler callback, int port)
 {
     dv_event_t  *ev = NULL; 
     int         fd = 0;
 
-    fd = bind(ip, port);
+    fd = dv_sk_bind(ip, port);
     if (fd < 0) {
         return NULL;
     }
@@ -53,7 +52,7 @@ dv_srv_read(int sock, short event, void *arg)
 }
 
 static void
-dv_srv_accept(int sock, short event, void *arg, struct sockaddr *addr,
+_dv_srv_accept(int sock, short event, void *arg, struct sockaddr *addr,
         socklen_t *addrlen)
 {
     dv_event_t              *ev = NULL; 
@@ -81,12 +80,12 @@ dv_srv_accept(int sock, short event, void *arg, struct sockaddr *addr,
 }
 
 static void
-dv_srv_accept6(int sock, short event, void *arg)
+dv_srv_accept(int sock, short event, void *arg)
 {
     struct sockaddr_in6     addr = {};
     socklen_t               addrlen = 0;
 
-    dv_srv_accept(sock, event, arg, (struct sockaddr *)&addr, &addrlen);
+    _dv_srv_accept(sock, event, arg, (struct sockaddr *)&addr, &addrlen);
 }
 
 int
@@ -100,7 +99,7 @@ dv_srv_socket_init(char *ip, int port)
         return ret;
     }
 
-    ev = dv_srv_add_listenning(ip, dv_sk_bind_v6, dv_srv_accept6, port);
+    ev = dv_srv_add_listenning(ip, dv_srv_accept, port);
     if (ev == NULL) {
         dv_event_exit();
         return DV_ERROR;

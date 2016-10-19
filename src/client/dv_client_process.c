@@ -30,7 +30,6 @@ dv_client_process(dv_client_conf_t *conf)
     const dv_proto_suite_t      *suite = NULL;
     void                        *ssl = NULL;
     int                         client_sockfd = -1;
-    int                         proto_type = 0;
     int                         ret = DV_ERROR;
 
     dv_log_init(DV_CLIENT_LOG_NAME);
@@ -40,30 +39,19 @@ dv_client_process(dv_client_conf_t *conf)
         return DV_ERROR;
     }
 
-    proto_type = dv_proto_find_type(conf->cc_proto_type);
-    if (proto_type < 0) {
-        DV_LOG(DV_LOG_INFO, "Find proto type failed!\n");
-        return DV_ERROR;
-    }
-
-    suite = dv_proto_suite_find(proto_type);
+    suite = dv_proto_suite_find(conf->cc_proto.cc_proto_type);
     if (suite == NULL) {
         DV_LOG(DV_LOG_INFO, "Find suite failed!\n");
         return DV_ERROR;
     }
     
-    ret = dv_client_ssl_init(suite, conf);
+    ret = dv_client_ssl_init(suite, &conf->cc_proto);
     if (ret != DV_OK) {
         DV_LOG(DV_LOG_INFO, "Init proto failed!\n");
         goto out;
     }
 
-    if (dv_ip_version4(conf->cc_ip)) {
-        client_sockfd = dv_sk_connect_v4(conf->cc_ip, conf->cc_port);
-    } else {
-        client_sockfd = dv_sk_connect_v6(conf->cc_ip, conf->cc_port);
-    }
-
+    client_sockfd = dv_sk_connect(conf->cc_ip, conf->cc_port);
     if (client_sockfd < 0) {
         DV_LOG(DV_LOG_INFO, "Sk create failed!\n");
         goto out;

@@ -4,6 +4,7 @@
 #define DV_DEF_SERVER_CIPHERS   "ECDHE-RSA-AES128-GCM-SHA256"
 #define DV_PROTO_OPENSSL        "openssl"
 #define DV_PROTO_DOVESSL        "dovessl"
+#define DV_PROTO_PLAINTEXT      "plaintext"
 
 enum {
     DV_PROTO_TYPE_NONE,
@@ -43,7 +44,6 @@ typedef struct _dv_proto_suite_t {
 } dv_proto_suite_t;
 
 extern const dv_proto_suite_t dv_suite_openssl;
-extern const dv_proto_suite_t *dv_proto_suite_find(int type);
-extern int dv_proto_find_type(const char *name);
+extern const dv_proto_suite_t *dv_proto_suite_find(const char *name);
 
 #endif
