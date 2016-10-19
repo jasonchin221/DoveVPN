@@ -1,4 +1,5 @@
 #include <stdlib.h>
+#include <string.h>
 
 #include "dv_event.h"
 #include "dv_errno.h"
@@ -130,8 +131,8 @@ dv_event_destroy(dv_event_t *event)
         event_free(event->et_ev);
     }
 
-    if (event->timeout) {
-        dv_free(event->timeout);
+    if (event->et_timeout) {
+        dv_free(event->et_timeout);
     }
 
 #if 0
