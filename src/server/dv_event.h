@@ -16,7 +16,7 @@ typedef struct _dv_event_t {
     struct timeval      *et_timeout;
     dv_event_handler    et_handler;
     dv_u32              et_flags;
-//    void *conn;
+    void                *et_ssl;
  //   struct krk_buffer *buf;
   //  void *data;
 }dv_event_t;

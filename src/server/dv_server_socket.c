@@ -64,6 +64,23 @@ _dv_srv_accept(int sock, short event, void *arg, struct sockaddr *addr,
         return;
     }
 
+    ev->et_ssl = suite->ps_ssl_new(ctx);
+    if (ev->et_ssl == NULL) {
+        return;
+    }
+    /* 将连接用户的 socket 加入到 SSL */
+    suite->ps_set_fd(ssl, accept_fd);
+    /* 建立 SSL 连接 */
+    if (suite->ps_accept(ssl) == -1) {
+        perror("accept");
+        close(accept_fd);
+        goto out;
+    }
+    if (suite->ps_get_verify_result(ssl) != DV_OK) {
+        printf("Client cert verify failed!\n");
+        exit(1);
+    }
+
     ev = dv_event_create();
     if (ev == NULL) {
         close(accept_fd);

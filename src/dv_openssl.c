@@ -23,7 +23,7 @@ static void dv_openssl_add_all_algorighms(void);
 static void *dv_openssl_ctx_client_new(void);
 static void *dv_openssl_ctx_server_new(void);
 static int dv_openssl_ctx_use_certificate_file(void *ctx, const char *file);
-static int dv_openssl_ctx_use_privateKey_file(void *ctx, const char *file);
+static int dv_openssl_ctx_use_private_key_file(void *ctx, const char *file);
 static int dv_openssl_ctx_check_private_key(const void *ctx);
 static int dv_openssl_ctx_set_ciphers(void *ctx);
 static void *dv_openssl_new(void *ctx);
@@ -48,7 +48,7 @@ const dv_proto_suite_t dv_suite_openssl = {
     .ps_ctx_client_new = dv_openssl_ctx_client_new,
     .ps_ctx_server_new = dv_openssl_ctx_server_new,
     .ps_ctx_use_certificate_file = dv_openssl_ctx_use_certificate_file,
-    .ps_ctx_use_privateKey_file = dv_openssl_ctx_use_privateKey_file,
+    .ps_ctx_use_private_key_file = dv_openssl_ctx_use_private_key_file,
     .ps_ctx_check_private_key = dv_openssl_ctx_check_private_key,
     .ps_ctx_set_ciphers = dv_openssl_ctx_set_ciphers,
     .ps_ssl_new = dv_openssl_new,
@@ -103,7 +103,7 @@ dv_openssl_ctx_use_certificate_file(void *ctx, const char *file)
 }
 
 static int
-dv_openssl_ctx_use_privateKey_file(void *ctx, const char *file)
+dv_openssl_ctx_use_private_key_file(void *ctx, const char *file)
 {
     int     ret = 0;
 

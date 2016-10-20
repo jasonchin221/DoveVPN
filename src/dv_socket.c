@@ -63,6 +63,7 @@ dv_sk_bind(const char *dip, dv_u16 dport)
         .sin6_family = AF_INET6,
     };
     int                     sockfd = 0;
+    int                     reuse = 1;
 
     sockfd = socket(AF_INET6, SOCK_STREAM, 0);
     if (sockfd < 0) {
@@ -76,6 +77,8 @@ dv_sk_bind(const char *dip, dv_u16 dport)
     } else {
         inet_pton(AF_INET6, dip, &dest.sin6_addr);
     }
+
+    setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, &reuse, sizeof(reuse));
 
     if (bind(sockfd, (struct sockaddr *)&dest, sizeof(dest)) != 0) {
         DV_LOG(DV_LOG_INFO, "Bind to dest  failed(%s)!\n", strerror(errno));

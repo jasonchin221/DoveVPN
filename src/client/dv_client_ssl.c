@@ -26,7 +26,7 @@ dv_client_ssl_init(const dv_proto_suite_t *suite, dv_cipher_conf_t *conf)
         goto err;
     }
     /* 载入用户私钥 */
-    if (suite->ps_ctx_use_privateKey_file(ctx, conf->cc_key) < 0) {
+    if (suite->ps_ctx_use_private_key_file(ctx, conf->cc_key) < 0) {
         DV_LOG(DV_LOG_EMERG, "Load private key %s failed!\n", conf->cc_key);
         goto err;
     }
