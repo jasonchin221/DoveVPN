@@ -4,6 +4,8 @@
 #include "dv_server_conf.h"
 #include "dv_server_core.h"
 #include "dv_lib.h"
+#include "dv_proto.h"
+#include "dv_log.h"
 
 #define DV_SRV_LOG_NAME     "DoveVPN-Server"
 

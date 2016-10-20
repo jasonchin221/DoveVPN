@@ -9,12 +9,12 @@
 #define DV_IP_ADDRESS_LEN       32
 #define DV_CONF_STR_LEN         256
 
-typedef struct _dv_cpiher_conf_t {
+typedef struct _dv_cipher_conf_t {
     char        cc_proto_type[DV_CONF_STR_LEN];
     char        cc_cert[DV_CONF_STR_LEN];
     char        cc_key[DV_CONF_STR_LEN];
     char        cc_ca[DV_CONF_STR_LEN];
-} dv_cpiher_conf_t;
+} dv_cipher_conf_t;
 
 typedef struct _dv_conf_parse_t {
     const char  *cp_name;

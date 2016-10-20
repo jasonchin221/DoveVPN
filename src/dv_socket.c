@@ -33,7 +33,7 @@ dv_sk_connect_v4(const char *dip, dv_u16 dport)
 }
 
 int
-dv_sk_connect(const char *dip, dv_u16 dport)
+dv_sk_connect_v6(const char *dip, dv_u16 dport)
 {
     struct sockaddr_in6     dest = {
         .sin6_family = AF_INET6,
@@ -48,7 +48,8 @@ dv_sk_connect(const char *dip, dv_u16 dport)
     dest.sin6_port = DV_HTONS(dport);
     inet_pton(AF_INET6, dip, &dest.sin6_addr);
     if (connect(sockfd, (struct sockaddr *)&dest, sizeof(dest)) != 0) {
-        DV_LOG(DV_LOG_INFO, "Connect to dest  failed(%s)!\n", strerror(errno));
+        DV_LOG(DV_LOG_INFO, "Connect to dest %s[%d] failed(%s)!\n",
+                dip, dport, strerror(errno));
         return DV_ERROR;
     }
  

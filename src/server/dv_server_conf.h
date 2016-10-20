@@ -10,7 +10,7 @@ typedef struct _dv_srv_conf_t {
     char                sc_listen_ip[DV_IP_ADDRESS_LEN];
     char                sc_subnet_ip[DV_IP_ADDRESS_LEN];
     int                 sc_subnet_mask;
-    dv_cpiher_conf_t    sc_proto;
+    dv_cipher_conf_t    sc_proto;
 } dv_srv_conf_t;
 
 extern int dv_srv_conf_parse(dv_srv_conf_t *conf, char *file);

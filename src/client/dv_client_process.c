@@ -51,7 +51,11 @@ dv_client_process(dv_client_conf_t *conf)
         goto out;
     }
 
-    client_sockfd = dv_sk_connect(conf->cc_ip, conf->cc_port);
+    if (dv_ip_version4(conf->cc_ip)) {
+        client_sockfd = dv_sk_connect_v4(conf->cc_ip, conf->cc_port);
+    } else {
+        client_sockfd = dv_sk_connect_v6(conf->cc_ip, conf->cc_port);
+    }
     if (client_sockfd < 0) {
         DV_LOG(DV_LOG_INFO, "Sk create failed!\n");
         goto out;
