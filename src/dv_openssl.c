@@ -182,7 +182,24 @@ dv_openssl_set_fd(void *s, int fd)
 static int
 dv_openssl_accept(void *s)
 {
-    return SSL_accept(s);
+    int     sslerr = 0;
+    int     ret = 0;
+
+    ret = SSL_accept(s);
+    if (ret == 1) {
+        return DV_OK;
+    }
+
+    sslerr = SSL_get_error(s, ret);
+    if (sslerr == SSL_ERROR_WANT_READ) {
+        return DV_EWANT_READ;
+    }
+
+    if (sslerr == SSL_ERROR_WANT_WRITE) {
+        return DV_EWANT_WRITE;
+    }
+
+    return DV_ERROR;
 }
 
 static int
