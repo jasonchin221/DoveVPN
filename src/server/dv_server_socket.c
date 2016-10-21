@@ -6,8 +6,10 @@
 #include "dv_errno.h"
 #include "dv_mem.h"
 #include "dv_server_socket.h"
+#include "dv_server_core.h"
 
 #define DV_SERVER_LISTEN_NUM    100
+#define DV_SERVER_BUF_SIZE      16384
 
 dv_sk_conn_t *
 dv_sk_conn_alloc(size_t buf_size)
@@ -18,7 +20,7 @@ dv_sk_conn_alloc(size_t buf_size)
         return NULL;
     }
 
-    conn = nts_calloc(sizeof(*conn) + buf_size);
+    conn = dv_calloc(sizeof(*conn) + buf_size);
     if (conn == NULL) {
         return NULL;
     }
@@ -92,6 +94,8 @@ static void
 _dv_srv_accept(int sock, short event, void *arg, struct sockaddr *addr,
         socklen_t *addrlen)
 {
+    const dv_proto_suite_t  *suite = dv_srv_proto_suite;
+    void                    *ctx = dv_srv_ctx;
     dv_event_t              *ev = NULL; 
     dv_sk_conn_t            *conn = NULL;
     void                    *ssl = NULL;
@@ -105,10 +109,11 @@ _dv_srv_accept(int sock, short event, void *arg, struct sockaddr *addr,
         return;
     }
 
-    conn = dv_sk_conn_alloc(buf_size);
+    conn = dv_sk_conn_alloc(DV_SERVER_BUF_SIZE);
     if (conn == NULL) {
         goto out;
     }
+
     ssl = suite->ps_ssl_new(ctx);
     if (ssl == NULL) {
         goto out;
@@ -125,10 +130,10 @@ _dv_srv_accept(int sock, short event, void *arg, struct sockaddr *addr,
             }
             handler = dv_srv_read;
             break;
-        case DV_EWANT_WANT_READ:
+        case DV_EWANT_READ:
             handler = dv_srv_handshake;
             break;
-        case DV_EWANT_WANT_WRITE:
+        case DV_EWANT_WRITE:
             //add write event
             handler = dv_srv_handshake;
             break;

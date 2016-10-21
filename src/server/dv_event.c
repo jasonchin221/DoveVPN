@@ -150,8 +150,8 @@ dv_event_destroy(dv_event_t *event)
         dv_free(event->et_timeout);
     }
 
-    if (event->ev_conn_free) {
-        event->ev_conn_free(event->ev_conn);
+    if (event->et_conn_free) {
+        event->et_conn_free(event->et_conn);
     }
 
     if (event->et_flags & DV_EVENT_FLAGS_NEED_FREE) {
