@@ -76,16 +76,50 @@ dv_srv_add_listenning(char *ip, dv_event_handler callback, int port)
 }
 
 static void
-dv_srv_handshake(int sock, short event, void *arg)
-{
-}
-
-static void
 dv_srv_read(int sock, short event, void *arg)
 {
     dv_event_t              *ev = arg; 
     printf("Read!\n");
     close(sock);
+    dv_event_del(ev);
+    dv_event_destroy(ev);
+}
+
+static void
+dv_srv_handshake(int sock, short event, void *arg)
+{
+    const dv_proto_suite_t  *suite = dv_srv_proto_suite;
+    dv_event_t              *ev = arg; 
+    dv_sk_conn_t            *conn = NULL;
+    void                    *ssl = NULL;
+    int                     ret = DV_OK;
+
+    printf("Handshake!\n");
+    ssl = conn->sc_ssl;
+    conn = ev->et_conn;
+
+    /* 建立 SSL 连接 */
+    ret = suite->ps_accept(ssl);
+    if (ret == DV_OK) {
+        if (suite->ps_get_verify_result(ssl) != DV_OK) {
+            printf("Client cert verify failed!\n");
+            goto out;
+        }
+        //handler = dv_srv_read;
+        conn->sc_flags |= DV_SK_CONN_FLAG_HANDSHAKED;
+        return;
+    }
+
+    if (ret == DV_EWANT_READ) {
+        return;
+    }
+
+    if (ret == DV_EWANT_WRITE) {
+            //add write event
+        return;
+    }
+
+out:
     dv_event_del(ev);
     dv_event_destroy(ev);
 }
