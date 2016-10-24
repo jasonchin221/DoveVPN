@@ -1,4 +1,5 @@
 #include <unistd.h>
+#include <string.h>
 
 #include "dv_types.h"
 #include "dv_socket.h"
@@ -7,10 +8,14 @@
 #include "dv_mem.h"
 #include "dv_server_socket.h"
 #include "dv_server_core.h"
+#include "dv_msg.h"
+#include "dv_ip_pool.h"
 
 #define DV_SERVER_LISTEN_NUM    100
 #define DV_SERVER_BUF_SIZE      16384
 
+static void
+dv_srv_write(int sock, short event, void *arg);
 static void
 dv_srv_write_handshake(int sock, short event, void *arg);
 
@@ -37,11 +42,21 @@ dv_sk_conn_alloc(size_t buf_size)
 void 
 dv_sk_conn_free(void *conn)
 {
-    if (conn == NULL) {
+    dv_sk_conn_t    *c = conn;
+
+    if (c == NULL) {
         return;
     }
 
-    dv_free(conn);
+    if (c->sc_buf != NULL) {
+        dv_free(c->sc_buf);
+    }
+
+    if (c->sc_ip != NULL) {
+        dv_subnet_ip_free(c->sc_ip);
+    }
+
+    dv_free(c);
 }
 
 static dv_event_t *
@@ -81,25 +96,104 @@ dv_srv_add_listenning(char *ip, dv_event_handler callback, int port)
 static void
 dv_srv_read(int sock, short event, void *arg)
 {
+    const dv_proto_suite_t  *suite = dv_srv_proto_suite;
     dv_event_t              *ev = arg; 
+    dv_sk_conn_t            *conn = ev->et_conn;
+    void                    *ssl = conn->sc_ssl;
+    char                    rbuf[100] = {};
+    int                     rlen = 0;
+
     printf("Read!\n");
-    close(sock);
-    dv_event_del(ev);
-    dv_event_destroy(ev);
+    rlen = suite->ps_read(ssl, rbuf, sizeof(rbuf));
+    if (rlen <= 0) {
+        close(sock);
+        dv_event_del(ev);
+        dv_event_destroy(ev);
+    }
 }
 
 static int
-dv_srv_handshake_done(dv_event_t *ev, const dv_proto_suite_t *suite)
+dv_srv_send_data(int sock, dv_event_t *ev, const dv_proto_suite_t *suite)
 {
-    dv_sk_conn_t        *conn = ev->et_conn;
-    void                *ssl = conn->sc_ssl;
+    dv_sk_conn_t            *conn = ev->et_conn;
+    void                    *ssl = conn->sc_ssl;
+    size_t                  mlen = conn->sc_data_len;
+    int                     data_len = 0;
+    int                     wlen = 0;
+
+    wlen = suite->ps_write(ssl, conn->sc_buf, mlen);
+    if (wlen < 0) {
+        if (wlen == -DV_EWANT_READ) {
+            ev->et_handler = dv_srv_write;
+            dv_event_set_read(sock, ev);
+        } else if (wlen == -DV_EWANT_WRITE) {
+            ev->et_handler = dv_srv_write;
+            dv_event_set_write(sock, ev);
+        } else {
+            return DV_ERROR;
+        } 
+
+        if (dv_event_add(ev) != DV_OK) {
+            return DV_ERROR;
+        }
+        return DV_OK;
+    }
+
+    data_len = mlen - wlen;
+    if (data_len > 0) {
+        /* Need use ring to avoid copy */
+        memmove(conn->sc_buf, conn->sc_buf + wlen, data_len);
+        ev->et_handler = dv_srv_write;
+    } else {
+        ev->et_handler = dv_srv_read;
+    }
+    conn->sc_data_len = data_len;
+
+    return DV_OK;
+}
+
+static void
+dv_srv_write(int sock, short event, void *arg)
+{
+    dv_event_t              *ev = arg; 
+    const dv_proto_suite_t  *suite = dv_srv_proto_suite;
+    int                     ret = DV_OK;
+
+    printf("Write!\n");
+    ret = dv_srv_send_data(sock, ev, suite);
+    if (ret != DV_OK) {
+        close(sock);
+        dv_event_del(ev);
+        dv_event_destroy(ev);
+    }
+}
+
+static int
+dv_srv_handshake_done(int sock, dv_event_t *ev, const dv_proto_suite_t *suite)
+{
+    dv_sk_conn_t            *conn = ev->et_conn;
+    dv_subnet_ip_t          *ip = NULL;
+    void                    *ssl = conn->sc_ssl;
+    size_t                  mlen = 0;
 
     if (suite->ps_get_verify_result(ssl) != DV_OK) {
         return DV_ERROR;
     }
-    ev->et_handler = dv_srv_read;
 
-    return DV_OK;
+    ip = dv_subnet_ip_alloc();
+    if (ip == NULL) {
+        return DV_ERROR;
+    }
+
+    /* Send message to alloc ip address */
+    conn->sc_ip = ip;
+    mlen = dv_msg_ipalloc_build(conn->sc_buf, conn->sc_buf_len, 
+            ip->si_ip, strlen(ip->si_ip));
+    if (mlen == 0) {
+        return DV_ERROR;
+    }
+
+    return dv_srv_send_data(sock, ev, suite);
 }
 
 static void
@@ -118,7 +212,7 @@ dv_srv_read_handshake(int sock, short event, void *arg)
     /* 建立 SSL 连接 */
     ret = suite->ps_accept(ssl);
     if (ret == DV_OK) {
-        ret = dv_srv_handshake_done(ev, suite);
+        ret = dv_srv_handshake_done(sock, ev, suite);
         if (ret != DV_OK) {
             printf("Client cert verify failed!\n");
             goto out;
@@ -127,11 +221,11 @@ dv_srv_read_handshake(int sock, short event, void *arg)
         return;
     }
 
-    if (ret == DV_EWANT_READ) {
+    if (ret == -DV_EWANT_READ) {
         return;
     }
 
-    if (ret == DV_EWANT_WRITE) {
+    if (ret == -DV_EWANT_WRITE) {
         dv_event_del(ev);
         ev->et_handler = dv_srv_write_handshake;
         dv_event_set_write(sock, ev);
@@ -163,7 +257,7 @@ dv_srv_write_handshake(int sock, short event, void *arg)
     /* 建立 SSL 连接 */
     ret = suite->ps_accept(ssl);
     if (ret == DV_OK) {
-        ret = dv_srv_handshake_done(ev, suite);
+        ret = dv_srv_handshake_done(sock, ev, suite);
         if (ret != DV_OK) {
             printf("Client cert verify failed!\n");
             goto out;
@@ -205,7 +299,6 @@ _dv_srv_accept(int sock, short event, void *arg, struct sockaddr *addr,
     dv_event_t              *ev = NULL; 
     dv_sk_conn_t            *conn = NULL;
     void                    *ssl = NULL;
-    dv_event_handler        handler = NULL;
     int                     accept_fd = 0;
     int                     ret = DV_OK;
 
@@ -235,7 +328,7 @@ _dv_srv_accept(int sock, short event, void *arg, struct sockaddr *addr,
     ret = suite->ps_accept(ssl);
     switch (ret) {
         case DV_OK:
-            ret = dv_srv_handshake_done(ev, suite);
+            ret = dv_srv_handshake_done(sock, ev, suite);
             if (ret != DV_OK) {
                 printf("Client cert verify failed!\n");
                 goto out;

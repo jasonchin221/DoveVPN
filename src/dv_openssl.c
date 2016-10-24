@@ -180,9 +180,26 @@ dv_openssl_set_fd(void *s, int fd)
 }
 
 static int
-dv_openssl_accept(void *s)
+dv_openssl_error(void *s, int ret)
 {
     int     sslerr = 0;
+
+    sslerr = SSL_get_error(s, ret);
+    if (sslerr == SSL_ERROR_WANT_READ) {
+        return -DV_EWANT_READ;
+    }
+
+    if (sslerr == SSL_ERROR_WANT_WRITE) {
+        return -DV_EWANT_WRITE;
+    }
+
+    return DV_ERROR;
+}
+
+
+static int
+dv_openssl_accept(void *s)
+{
     int     ret = 0;
 
     ret = SSL_accept(s);
@@ -190,16 +207,7 @@ dv_openssl_accept(void *s)
         return DV_OK;
     }
 
-    sslerr = SSL_get_error(s, ret);
-    if (sslerr == SSL_ERROR_WANT_READ) {
-        return DV_EWANT_READ;
-    }
-
-    if (sslerr == SSL_ERROR_WANT_WRITE) {
-        return DV_EWANT_WRITE;
-    }
-
-    return DV_ERROR;
+    return dv_openssl_error(s, ret);
 }
 
 static int
@@ -211,13 +219,27 @@ dv_openssl_connect(void *s)
 static int
 dv_openssl_read(void *s, void *buf, int num)
 {
-    return SSL_read(s, buf, num);
+    int     ret = 0;
+
+    ret = SSL_read(s, buf, num);
+    if (ret >= 0) {
+        return DV_OK;
+    }
+
+    return dv_openssl_error(s, ret);
 }
 
 static int
 dv_openssl_write(void *s, const void *buf, int num)
 {
-    return SSL_write(s, buf, num);
+    int     ret = 0;
+
+    ret = SSL_write(s, buf, num);
+    if (ret > 0) {
+        return DV_OK;
+    }
+
+    return dv_openssl_error(s, ret);
 }
 
 static int
