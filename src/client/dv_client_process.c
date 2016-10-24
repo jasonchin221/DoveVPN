@@ -67,7 +67,7 @@ dv_client_process(dv_client_conf_t *conf)
     }
 
     /* get and set tunnel ip via TLS */
-    ret = dv_client_set_tun_ip(suite, ssl);
+    ret = dv_client_set_tun_ip(dv_client_tun.tn_name, suite, ssl);
     if (ret != DV_OK) {
         goto out;
     }

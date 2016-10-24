@@ -213,7 +213,14 @@ dv_openssl_accept(void *s)
 static int
 dv_openssl_connect(void *s)
 {
-    return SSL_connect(s);
+    int     ret = 0;
+
+    ret = SSL_connect(s);
+    if (ret == 1) {
+        return DV_OK;
+    }
+
+    return dv_openssl_error(s, ret);
 }
 
 static int

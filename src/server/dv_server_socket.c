@@ -188,7 +188,7 @@ dv_srv_handshake_done(int sock, dv_event_t *ev, const dv_proto_suite_t *suite)
     /* Send message to alloc ip address */
     conn->sc_ip = ip;
     mlen = dv_msg_ipalloc_build(conn->sc_buf, conn->sc_buf_len, 
-            ip->si_ip, strlen(ip->si_ip));
+            ip->si_ip, strlen(ip->si_ip), dv_get_subnet_mask());
     if (mlen == 0) {
         return DV_ERROR;
     }

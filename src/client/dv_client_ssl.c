@@ -63,11 +63,13 @@ dv_client_ssl_conn_create(const dv_proto_suite_t *suite, int sockfd)
     ssl = suite->ps_ssl_new(dv_client_ctx);
     suite->ps_set_fd(ssl, sockfd);
     /* 建立 SSL 连接 */
-    if (suite->ps_connect(ssl) == -1) {
+    if (suite->ps_connect(ssl) != DV_OK) {
+        suite->ps_ssl_free(ssl);
         return NULL;
     }
 
     if (suite->ps_get_verify_result(ssl) != DV_OK) {
+        suite->ps_ssl_free(ssl);
         return NULL;
     }
 

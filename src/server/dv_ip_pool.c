@@ -82,6 +82,12 @@ dv_gen_ipv6(char *ip, dv_u32 len, char *subnet, int subnet_mask, dv_u32 seq)
     return DV_ERROR;
 }
 
+dv_u32
+dv_get_subnet_mask(void)
+{
+    return dv_ip_pool.ip_mask;
+}
+
 int
 dv_ip_pool_init(char *subnet_ip, dv_u32 len, int mask)
 {
@@ -131,6 +137,7 @@ dv_ip_pool_init(char *subnet_ip, dv_u32 len, int mask)
         //printf("ip=%s ", ip_array->si_ip);
     }
 
+    pool->ip_mask = mask;
     DV_LOG(DV_LOG_NOTICE, "Alloc ip pool(%d MB) OK!\n", 
             total_size/1000000);
     return DV_OK;
