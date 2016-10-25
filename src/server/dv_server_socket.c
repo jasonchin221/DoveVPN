@@ -48,10 +48,6 @@ dv_sk_conn_free(void *conn)
         return;
     }
 
-    if (c->sc_buf != NULL) {
-        dv_free(c->sc_buf);
-    }
-
     if (c->sc_ip != NULL) {
         dv_subnet_ip_free(c->sc_ip);
     }
@@ -205,8 +201,8 @@ dv_srv_read_handshake(int sock, short event, void *arg)
     void                    *ssl = NULL;
     int                     ret = DV_OK;
 
-    printf("Handshake!\n");
     ssl = conn->sc_ssl;
+    printf("Handshake! conn = %p\n", conn);
     conn = ev->et_conn;
 
     /* 建立 SSL 连接 */
@@ -324,6 +320,9 @@ _dv_srv_accept(int sock, short event, void *arg, struct sockaddr *addr,
         goto out;
     }
 
+    conn->sc_ssl = ssl;
+    ev->et_conn = conn;
+    ev->et_conn_free = dv_sk_conn_free;
     /* 建立 SSL 连接 */
     ret = suite->ps_accept(ssl);
     switch (ret) {
@@ -331,7 +330,7 @@ _dv_srv_accept(int sock, short event, void *arg, struct sockaddr *addr,
             ret = dv_srv_handshake_done(sock, ev, suite);
             if (ret != DV_OK) {
                 printf("Client cert verify failed!\n");
-                goto out;
+                goto free_ev;
             }
             dv_event_set_read(accept_fd, ev);
             break;
@@ -344,12 +343,9 @@ _dv_srv_accept(int sock, short event, void *arg, struct sockaddr *addr,
             dv_event_set_write(accept_fd, ev);
             break;
         default:
-            goto out;
+            goto free_ev;
     }
 
-    conn->sc_ssl = ssl;
-    ev->et_conn = conn;
-    ev->et_conn_free = dv_sk_conn_free;
     if (dv_event_add(ev) != DV_OK) {
         close(accept_fd);
         dv_event_destroy(ev);
@@ -357,17 +353,15 @@ _dv_srv_accept(int sock, short event, void *arg, struct sockaddr *addr,
     }
     return;
 out:
+    if (ssl != NULL) {
+        suite->ps_ssl_free(ssl);
+    }
+
+free_ev:
     if (ev != NULL) {
         dv_event_destroy(ev);
     }
 
-    if (conn != NULL) {
-        dv_sk_conn_free(conn);
-    }
-
-    if (ssl != NULL) {
-        suite->ps_ssl_free(ssl);
-    }
     close(accept_fd);
 }
 
