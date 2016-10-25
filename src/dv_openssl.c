@@ -231,7 +231,7 @@ dv_openssl_read(void *s, void *buf, int num)
 
     ret = SSL_read(s, buf, num);
     if (ret >= 0) {
-        return DV_OK;
+        return ret;
     }
 
     return dv_openssl_error(s, ret);

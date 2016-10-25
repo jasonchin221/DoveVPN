@@ -11,8 +11,8 @@ dv_client_set_tun_ip(char *dev, const dv_proto_suite_t *suite, void *ssl)
     int                 rlen = 0;
     int                 ret = DV_OK;
 
-    rlen = suite->ps_read(ssl, &msg, sizeof(&msg));
-    if (rlen < 0) {
+    rlen = suite->ps_read(ssl, &msg, sizeof(msg));
+    if (rlen <= 0) {
         return DV_ERROR;
     }
 
@@ -20,6 +20,8 @@ dv_client_set_tun_ip(char *dev, const dv_proto_suite_t *suite, void *ssl)
         return DV_ERROR;
     }
 
+    printf("ip = %s, mask = %d, rlen = %d, msg = %d\n",
+            msg.mi_ip, msg.mi_mask, rlen, (int)sizeof(msg));
     ret = dv_if_set_ip(dev, msg.mi_ip, msg.mi_mask);
     if (ret != DV_OK){
         return DV_ERROR;

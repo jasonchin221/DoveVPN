@@ -74,7 +74,9 @@ dv_client_process(dv_client_conf_t *conf)
 
     /* add tun fd and sockfd to epoll */
 
-    sleep(10);
+    while (1) {
+        sleep(100);
+    }
     ret = DV_OK;
 out:
     if (ssl != NULL) {
