@@ -78,7 +78,7 @@ dv_srv_add_listenning(char *ip, dv_event_handler callback, int port)
     }
 
     ev->et_handler = callback;
-    dv_event_set_read(fd, ev);
+    dv_event_set_accept_read(fd, ev);
 
     if (dv_event_add(ev) != DV_OK) {
         close(fd);
@@ -99,11 +99,16 @@ dv_srv_read(int sock, short event, void *arg)
     char                    rbuf[100] = {};
     int                     rlen = 0;
 
-    printf("Read!\n");
     rlen = suite->ps_read(ssl, rbuf, sizeof(rbuf));
+    printf("Read! rlen = %d\n", rlen);
     if (rlen <= 0) {
         close(sock);
         dv_event_del(ev);
+        dv_event_destroy(ev);
+        return;
+    }
+
+    if (dv_event_add(ev) != DV_OK) {
         dv_event_destroy(ev);
     }
 }
@@ -138,14 +143,23 @@ dv_srv_send_data(int sock, dv_event_t *ev, const dv_proto_suite_t *suite)
     }
 
     data_len = mlen - wlen;
+    printf("data = %d, wlen = %d, mlen = %d\n", data_len, wlen, (int)mlen);
     if (data_len > 0) {
         /* Need use ring to avoid copy */
         memmove(conn->sc_buf, conn->sc_buf + wlen, data_len);
         ev->et_handler = dv_srv_write;
+        dv_event_set_write(sock, ev);
     } else {
+        printf("add read event\n");
         ev->et_handler = dv_srv_read;
+        dv_event_set_read(sock, ev);
     }
     conn->sc_data_len = data_len;
+
+    if (dv_event_add(ev) != DV_OK) {
+        fprintf(stderr, "Add event failed!\n");
+        return DV_ERROR;
+    }
 
     return DV_OK;
 }
@@ -225,11 +239,13 @@ dv_srv_read_handshake(int sock, short event, void *arg)
     }
 
     if (ret == -DV_EWANT_READ) {
+        if (dv_event_add(ev) != DV_OK) {
+            goto out;
+        }
         return;
     }
 
     if (ret == -DV_EWANT_WRITE) {
-        dv_event_del(ev);
         ev->et_handler = dv_srv_write_handshake;
         dv_event_set_write(sock, ev);
         if (dv_event_add(ev) != DV_OK) {
@@ -334,13 +350,12 @@ _dv_srv_accept(int sock, short event, void *arg, struct sockaddr *addr,
     ret = suite->ps_accept(ssl);
     switch (ret) {
         case DV_OK:
-            ret = dv_srv_handshake_done(sock, ev, suite);
+            ret = dv_srv_handshake_done(accept_fd, ev, suite);
             if (ret != DV_OK) {
                 fprintf(stderr, "Handshake done proc failed!\n");
                 goto free_ev;
             }
-            dv_event_set_read(accept_fd, ev);
-            break;
+            return;
         case DV_EWANT_READ:
             ev->et_handler = dv_srv_read_handshake;
             dv_event_set_read(accept_fd, ev);

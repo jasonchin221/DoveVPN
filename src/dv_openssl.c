@@ -244,7 +244,7 @@ dv_openssl_write(void *s, const void *buf, int num)
 
     ret = SSL_write(s, buf, num);
     if (ret > 0) {
-        return DV_OK;
+        return ret;
     }
 
     return dv_openssl_error(s, ret);
