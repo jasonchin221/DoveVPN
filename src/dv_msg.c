@@ -4,7 +4,7 @@
 #include "dv_assert.h"
 
 
-void
+size_t
 dv_msg_ipalloc_build(void *buf, size_t buf_len, void *ip,
             size_t ip_len, dv_u32 mask)
 {
@@ -12,8 +12,14 @@ dv_msg_ipalloc_build(void *buf, size_t buf_len, void *ip,
 
     dv_assert(ip_len < sizeof(addr->mi_ip));
 
+    if (buf_len < sizeof(*addr)) {
+        return 0;
+    }
+
     addr->mi_header.mh_type = DV_MSG_TYPE_IPADDR;
     addr->mi_header.mh_length = sizeof(*addr);
     addr->mi_mask = mask;
     memcpy(addr->mi_ip, ip, ip_len);
+
+    return sizeof(*addr);
 }

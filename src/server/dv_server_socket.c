@@ -126,7 +126,7 @@ dv_srv_send_data(int sock, dv_event_t *ev, const dv_proto_suite_t *suite)
             ev->et_handler = dv_srv_write;
             dv_event_set_write(sock, ev);
         } else {
-            fprintf(stderr, "Send data failed!\n");
+            fprintf(stderr, "Send data failed! mlen = %u\n", (dv_u32)mlen);
             return DV_ERROR;
         } 
 
@@ -172,6 +172,7 @@ dv_srv_handshake_done(int sock, dv_event_t *ev, const dv_proto_suite_t *suite)
     dv_sk_conn_t            *conn = ev->et_conn;
     dv_subnet_ip_t          *ip = NULL;
     void                    *ssl = conn->sc_ssl;
+    size_t                  mlen = 0;
 
     if (suite->ps_get_verify_result(ssl) != DV_OK) {
         fprintf(stderr, "Verify failed\n!");
@@ -186,8 +187,14 @@ dv_srv_handshake_done(int sock, dv_event_t *ev, const dv_proto_suite_t *suite)
 
     /* Send message to alloc ip address */
     conn->sc_ip = ip;
-    dv_msg_ipalloc_build(conn->sc_buf, conn->sc_buf_len, ip->si_ip, 
-            strlen(ip->si_ip), dv_get_subnet_mask());
+    mlen = dv_msg_ipalloc_build(conn->sc_buf, conn->sc_buf_len,
+            ip->si_ip, strlen(ip->si_ip), dv_get_subnet_mask());
+    if (mlen == 0) {
+        fprintf(stderr, "Build ipalloc msg failed\n!");
+        return DV_ERROR;
+    }
+
+    conn->sc_data_len = mlen;
 
     return dv_srv_send_data(sock, ev, suite);
 }
