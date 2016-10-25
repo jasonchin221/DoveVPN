@@ -7,6 +7,7 @@
 #include <netinet/in.h>
 #include <sys/socket.h>
 #include <unistd.h>
+#include <sys/epoll.h>
 
 #include "dv_types.h"
 #include "dv_proto.h"
@@ -21,14 +22,30 @@
 #include "dv_proto.h"
 
 #define DV_CLIENT_LOG_NAME  "DoveVPN-Client"
+#define DV_EVENT_MAX_NUM    10
 
 static dv_tun_t dv_client_tun;
+
+static void
+dv_add_epoll_event(int epfd, struct epoll_event *ev, int fd)
+{
+    ev->data.fd = fd;
+    ev->events = EPOLLIN;
+    epoll_ctl(epfd, EPOLL_CTL_ADD, fd, ev);
+}
 
 int
 dv_client_process(dv_client_conf_t *conf)
 {
     const dv_proto_suite_t      *suite = NULL;
     void                        *ssl = NULL;
+    struct epoll_event          ev[2] = {};
+    struct epoll_event          events[DV_EVENT_MAX_NUM] = {};
+    int                         epfd = -1;
+    int                         efd = -1;
+    int                         nfds = 0;
+    int                         tun_fd = 0;
+    int                         i = 0;
     int                         client_sockfd = -1;
     int                         ret = DV_ERROR;
 
@@ -39,6 +56,7 @@ dv_client_process(dv_client_conf_t *conf)
         return DV_ERROR;
     }
 
+    tun_fd = dv_client_tun.tn_fd;
     suite = dv_proto_suite_find(conf->cc_proto.cc_proto_type);
     if (suite == NULL) {
         DV_LOG(DV_LOG_INFO, "Find suite failed!\n");
@@ -73,11 +91,35 @@ dv_client_process(dv_client_conf_t *conf)
     }
 
     /* add tun fd and sockfd to epoll */
+    epfd = epoll_create(1);
+    if (epfd < 0) {
+        goto out;
+    }
+    dv_add_epoll_event(epfd, &ev[0], client_sockfd);
+    dv_add_epoll_event(epfd, &ev[1], tun_fd);
 
     while (1) {
-        sleep(100);
+        nfds = epoll_wait(epfd, events, DV_EVENT_MAX_NUM, -1);
+        for (i = 0; i < nfds; i++) {
+            if (events[i].events & EPOLLIN) {
+                if ((efd = events[i].data.fd) < 0) {
+                    continue;
+                }
+
+                /* Ciphertext arrived */
+                if (efd == client_sockfd) {
+                    dv_add_epoll_event(epfd, &ev[0], efd);
+                    continue;
+                }
+                if (efd == tun_fd) {
+                    dv_add_epoll_event(epfd, &ev[1], efd);
+                    continue;
+                }
+            }
+        }
     }
     ret = DV_OK;
+    close(epfd);
 out:
     if (ssl != NULL) {
         suite->ps_ssl_free(ssl);

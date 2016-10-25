@@ -102,6 +102,7 @@ dv_srv_read(int sock, short event, void *arg)
     rlen = suite->ps_read(ssl, rbuf, sizeof(rbuf));
     printf("Read! rlen = %d\n", rlen);
     if (rlen <= 0) {
+        suite->ps_shutdown(ssl);
         close(sock);
         dv_event_del(ev);
         dv_event_destroy(ev);
@@ -168,12 +169,15 @@ static void
 dv_srv_write(int sock, short event, void *arg)
 {
     dv_event_t              *ev = arg; 
+    dv_sk_conn_t            *conn = ev->et_conn;
+    void                    *ssl = conn->sc_ssl;
     const dv_proto_suite_t  *suite = dv_srv_proto_suite;
     int                     ret = DV_OK;
 
     printf("Write!\n");
     ret = dv_srv_send_data(sock, ev, suite);
     if (ret != DV_OK) {
+        suite->ps_shutdown(ssl);
         close(sock);
         dv_event_del(ev);
         dv_event_destroy(ev);
