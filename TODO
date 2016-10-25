@@ -1,10 +1,7 @@
 Client:
-1. Get IP address
-2. Setup tunnel
-3. Config ip for tun
-4. Add fd of tun to epoll
-5. Transmite data
+1. Add fd of tun to epoll
+2. Transmite data
 Server:
 1. Multi process
 2. CPU bind
-2. Libevent
+3. Transmite data
