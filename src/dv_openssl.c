@@ -193,6 +193,7 @@ dv_openssl_error(void *s, int ret)
         return -DV_EWANT_WRITE;
     }
 
+    fprintf(stderr, "sslerr = %d, err = %ld\n", sslerr, ERR_get_error());
     return DV_ERROR;
 }
 

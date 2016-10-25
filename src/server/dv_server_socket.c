@@ -126,10 +126,12 @@ dv_srv_send_data(int sock, dv_event_t *ev, const dv_proto_suite_t *suite)
             ev->et_handler = dv_srv_write;
             dv_event_set_write(sock, ev);
         } else {
+            fprintf(stderr, "Send data failed!\n");
             return DV_ERROR;
         } 
 
         if (dv_event_add(ev) != DV_OK) {
+            fprintf(stderr, "Add event failed!\n");
             return DV_ERROR;
         }
         return DV_OK;
@@ -170,24 +172,22 @@ dv_srv_handshake_done(int sock, dv_event_t *ev, const dv_proto_suite_t *suite)
     dv_sk_conn_t            *conn = ev->et_conn;
     dv_subnet_ip_t          *ip = NULL;
     void                    *ssl = conn->sc_ssl;
-    size_t                  mlen = 0;
 
     if (suite->ps_get_verify_result(ssl) != DV_OK) {
+        fprintf(stderr, "Verify failed\n!");
         return DV_ERROR;
     }
 
     ip = dv_subnet_ip_alloc();
     if (ip == NULL) {
+        fprintf(stderr, "Alloc ip failed\n!");
         return DV_ERROR;
     }
 
     /* Send message to alloc ip address */
     conn->sc_ip = ip;
-    mlen = dv_msg_ipalloc_build(conn->sc_buf, conn->sc_buf_len, 
-            ip->si_ip, strlen(ip->si_ip), dv_get_subnet_mask());
-    if (mlen == 0) {
-        return DV_ERROR;
-    }
+    dv_msg_ipalloc_build(conn->sc_buf, conn->sc_buf_len, ip->si_ip, 
+            strlen(ip->si_ip), dv_get_subnet_mask());
 
     return dv_srv_send_data(sock, ev, suite);
 }
@@ -210,7 +210,7 @@ dv_srv_read_handshake(int sock, short event, void *arg)
     if (ret == DV_OK) {
         ret = dv_srv_handshake_done(sock, ev, suite);
         if (ret != DV_OK) {
-            printf("Client cert verify failed!\n");
+            fprintf(stderr, "Handshake done proc failed!\n");
             goto out;
         }
         //conn->sc_flags |= DV_SK_CONN_FLAG_HANDSHAKED;
@@ -255,7 +255,7 @@ dv_srv_write_handshake(int sock, short event, void *arg)
     if (ret == DV_OK) {
         ret = dv_srv_handshake_done(sock, ev, suite);
         if (ret != DV_OK) {
-            printf("Client cert verify failed!\n");
+            fprintf(stderr, "Handshake done proc failed!\n");
             goto out;
         }
         goto want_read;
@@ -329,7 +329,7 @@ _dv_srv_accept(int sock, short event, void *arg, struct sockaddr *addr,
         case DV_OK:
             ret = dv_srv_handshake_done(sock, ev, suite);
             if (ret != DV_OK) {
-                printf("Client cert verify failed!\n");
+                fprintf(stderr, "Handshake done proc failed!\n");
                 goto free_ev;
             }
             dv_event_set_read(accept_fd, ev);
