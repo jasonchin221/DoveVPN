@@ -79,6 +79,11 @@ static dv_conf_parse_t dv_srv_conf_processes[] = {
 
 #define DV_SRV_CONF_PROCESSES_ARRAY_SIZE DV_ARRAY_SIZE(dv_srv_conf_processes)
 
+static int
+dv_srv_conf_check(dv_srv_conf_t *conf)
+{
+    return DV_OK;
+}
 
 int 
 dv_srv_conf_parse(dv_srv_conf_t *conf, char *file)
@@ -99,5 +104,11 @@ dv_srv_conf_parse(dv_srv_conf_t *conf, char *file)
 
     DV_LOG(DV_LOG_NOTICE, "ip = %s, mask = %d\n", conf->sc_subnet_ip, 
             conf->sc_subnet_mask);
-    return dv_cipher_conf_parse(&conf->sc_proto, DV_SRV_CONF_PROTO, file);
+    ret = dv_cipher_conf_parse(&conf->sc_proto, DV_SRV_CONF_PROTO, file);
+    if (ret != DV_OK) {
+        return DV_ERROR;
+    }
+
+    return dv_srv_conf_check(conf);
 }
+

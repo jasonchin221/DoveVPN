@@ -47,6 +47,11 @@ static dv_conf_parse_t dv_cli_conf_processes[] = {
 
 #define DV_CLI_CONF_PROCESSES_ARRAY_SIZE DV_ARRAY_SIZE(dv_cli_conf_processes)
 
+static int
+dv_cli_conf_check(dv_client_conf_t *conf)
+{
+    return DV_OK;
+}
 
 int
 dv_cli_conf_parse(dv_client_conf_t *conf, char *file)
@@ -65,5 +70,10 @@ dv_cli_conf_parse(dv_client_conf_t *conf, char *file)
         return DV_ERROR;
     }
 
-    return dv_cipher_conf_parse(&conf->cc_proto, DV_CLI_CONF_PROTO, file);
+    ret = dv_cipher_conf_parse(&conf->cc_proto, DV_CLI_CONF_PROTO, file);
+    if (ret != DV_OK) {
+        return DV_ERROR;
+    }
+
+    return dv_cli_conf_check(conf);
 }
