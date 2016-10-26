@@ -16,7 +16,7 @@ static dv_tun_t dv_srv_tun = {
 extern int dv_srv_socket_init(char *ip, int port);
 
 static int
-dv_srv_create_and_set_tun(dv_tun_t *tun, int seq, int mask,
+dv_srv_create_and_set_tun(dv_tun_t *tun, int seq, int mask, int mtu,
             char *subnet_ip, dv_u32 subnet_ip_size)
 {
     dv_subnet_ip_t  *ip = NULL;
@@ -27,7 +27,7 @@ dv_srv_create_and_set_tun(dv_tun_t *tun, int seq, int mask,
         return DV_ERROR;
     }
 
-    ret = dv_ip_pool_init(subnet_ip, subnet_ip_size, mask);
+    ret = dv_ip_pool_init(subnet_ip, subnet_ip_size, mask, mtu);
     if (ret != DV_OK) {
         goto err;
     }
@@ -38,7 +38,7 @@ dv_srv_create_and_set_tun(dv_tun_t *tun, int seq, int mask,
     }
 
     /* Config ip for tun */
-    ret = dv_if_set_ip(tun->tn_name, ip->si_ip, mask);
+    ret = dv_if_set(tun->tn_name, ip->si_ip, mask, mtu);
     if (ret != DV_OK) {
         goto err;
     }
@@ -60,7 +60,7 @@ dv_start_worker_processes(dv_srv_conf_t *conf, dv_u32 cpu_num)
     for (i = 0; i < 1/* cpu_num */; i++) {
         /* Fork process */
 
-        ret = dv_srv_create_and_set_tun(tun, i, mask,
+        ret = dv_srv_create_and_set_tun(tun, i, mask, conf->sc_mtu,
             conf->sc_subnet_ip, sizeof(conf->sc_subnet_ip));
         if (ret != DV_OK) {
             break;

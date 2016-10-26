@@ -19,6 +19,7 @@ typedef struct _dv_msg_ipaddr_t {
     dv_msg_header_t     mi_header;
     char                mi_ip[DV_IP_ADDRESS_LEN];
     dv_u32              mi_mask;
+    int                 mi_mtu;
 } dv_msg_ipaddr_t;
 
 

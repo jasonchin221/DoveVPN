@@ -22,7 +22,7 @@ dv_client_set_tun_ip(char *dev, const dv_proto_suite_t *suite, void *ssl)
 
     printf("ip = %s, mask = %d, rlen = %d, msg = %d\n",
             msg.mi_ip, msg.mi_mask, rlen, (int)sizeof(msg));
-    ret = dv_if_set_ip(dev, msg.mi_ip, msg.mi_mask);
+    ret = dv_if_set(dev, msg.mi_ip, msg.mi_mask, msg.mi_mtu);
     if (ret != DV_OK){
         return DV_ERROR;
     }

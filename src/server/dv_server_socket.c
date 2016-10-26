@@ -38,7 +38,6 @@ dv_sk_conn_alloc(size_t buf_size)
     return conn;
 }
 
-
 void 
 dv_sk_conn_free(void *conn)
 {

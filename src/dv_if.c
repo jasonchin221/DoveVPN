@@ -9,7 +9,7 @@
 #define DV_IF_SET_IP_STR_FORMAT     "ifconfig %s %s/%d up"
 
 int
-dv_if_set_ip(char *dev, char *ip, int mask)
+dv_if_set_ip(char *dev, char *ip, int mask, int mtu)
 {
     char    *str = NULL;
     int     len = 0;

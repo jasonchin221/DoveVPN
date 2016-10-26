@@ -89,7 +89,13 @@ dv_get_subnet_mask(void)
 }
 
 int
-dv_ip_pool_init(char *subnet_ip, dv_u32 len, int mask)
+dv_get_subnet_mtu(void)
+{
+    return dv_ip_pool.ip_mtu;
+}
+
+int
+dv_ip_pool_init(char *subnet_ip, dv_u32 len, int mask, int mtu)
 {
     dv_subnet_ip_t      *ip_array; 
     dv_pool_create_t    *create = NULL;
@@ -138,6 +144,7 @@ dv_ip_pool_init(char *subnet_ip, dv_u32 len, int mask)
     }
 
     pool->ip_mask = mask;
+    pool->ip_mtu = mtu;
     DV_LOG(DV_LOG_NOTICE, "Alloc ip pool(%d MB) OK!\n", 
             total_size/1000000);
     return DV_OK;

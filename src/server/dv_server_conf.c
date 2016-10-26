@@ -9,6 +9,7 @@
 #define DV_SRV_CONF_SUBNET_MASK     "subnet-mask"
 #define DV_SRV_CONF_LISTEN_IP       "listen-ip"
 #define DV_SRV_CONF_PORT            "listen-port"
+#define DV_SRV_CONF_MTU             "mtu"
 #define DV_SRV_CONF_PROTO           "proto"
 #define DV_SRV_CONF_PROTO_TYPE      "type"
 #define DV_SRV_CONF_CERT            "cert"
@@ -53,6 +54,14 @@ static dv_conf_parse_t dv_srv_conf_network[] = {
         .cp_necessary = DV_TRUE,
         .cp_parse = dv_conf_parse_int,
     },
+    {
+        .cp_name = DV_SRV_CONF_MTU,
+        .cp_len = sizeof(dv_srv_conf.sc_mtu),
+        .cp_offset = dv_offsetof(dv_srv_conf_t, sc_mtu),
+        .cp_type = json_type_int,
+        .cp_necessary = DV_TRUE,
+        .cp_parse = dv_conf_parse_int,
+    },
 };
 
 #define DV_SRV_CONF_NETWORK_ARRAY_SIZE DV_ARRAY_SIZE(dv_srv_conf_network)
@@ -91,6 +100,4 @@ dv_srv_conf_parse(dv_srv_conf_t *conf, char *file)
     DV_LOG(DV_LOG_NOTICE, "ip = %s, mask = %d\n", conf->sc_subnet_ip, 
             conf->sc_subnet_mask);
     return dv_cipher_conf_parse(&conf->sc_proto, DV_SRV_CONF_PROTO, file);
-
-    return DV_OK;
 }
