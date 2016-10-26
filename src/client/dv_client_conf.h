@@ -7,6 +7,7 @@
 typedef struct _dv_client_conf_t {
     char                        cc_ip[DV_IP_ADDRESS_LEN];
     int                         cc_port;
+    int                         cc_daemon;
     dv_cipher_conf_t            cc_proto;
 } dv_client_conf_t;
 

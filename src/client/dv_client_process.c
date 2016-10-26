@@ -30,7 +30,7 @@ static void
 dv_add_epoll_event(int epfd, struct epoll_event *ev, int fd)
 {
     ev->data.fd = fd;
-    ev->events = EPOLLIN;
+    ev->events = EPOLLIN|EPOLLET;
     epoll_ctl(epfd, EPOLL_CTL_ADD, fd, ev);
 }
 
@@ -39,7 +39,7 @@ dv_client_process(dv_client_conf_t *conf)
 {
     const dv_proto_suite_t      *suite = NULL;
     void                        *ssl = NULL;
-    struct epoll_event          ev[2] = {};
+    struct epoll_event          ev = {};
     struct epoll_event          events[DV_EVENT_MAX_NUM] = {};
     int                         epfd = -1;
     int                         efd = -1;
@@ -95,8 +95,8 @@ dv_client_process(dv_client_conf_t *conf)
     if (epfd < 0) {
         goto out;
     }
-    dv_add_epoll_event(epfd, &ev[0], client_sockfd);
-    dv_add_epoll_event(epfd, &ev[1], tun_fd);
+    dv_add_epoll_event(epfd, &ev, client_sockfd);
+    dv_add_epoll_event(epfd, &ev, tun_fd);
 
     while (1) {
         nfds = epoll_wait(epfd, events, DV_EVENT_MAX_NUM, -1);
@@ -108,11 +108,12 @@ dv_client_process(dv_client_conf_t *conf)
 
                 /* Ciphertext arrived */
                 if (efd == client_sockfd) {
-                    dv_add_epoll_event(epfd, &ev[0], efd);
+                    dv_add_epoll_event(epfd, &ev, efd);
                     continue;
                 }
+                /* Plaintext arrived */
                 if (efd == tun_fd) {
-                    dv_add_epoll_event(epfd, &ev[1], efd);
+                    dv_add_epoll_event(epfd, &ev, efd);
                     continue;
                 }
             }

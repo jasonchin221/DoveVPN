@@ -68,7 +68,7 @@ dv_event_set(int s, dv_event_t *event, short type)
 void 
 dv_event_set_read(int s, dv_event_t *event)
 {
-    dv_event_set(s, event, EV_READ);
+    dv_event_set(s, event, EV_READ|EV_ET);
 }
 
 void 
@@ -80,7 +80,7 @@ dv_event_set_accept_read(int s, dv_event_t *event)
 void 
 dv_event_set_write(int s, dv_event_t *event)
 {
-    dv_event_set(s, event, EV_WRITE);
+    dv_event_set(s, event, EV_WRITE|EV_ET);
 }
 
 int 

@@ -26,7 +26,6 @@ dv_program_version = "1.0.0";//PACKAGE_STRING;
 static const struct option 
 dv_long_opts[] = {
 	{"help", 0, 0, 'H'},
-	{"daemonize", 0, 0, 'd'},
 	{"config", 0, 0, 'c'},
 	{0, 0, 0, 0}
 };
@@ -34,7 +33,6 @@ dv_long_opts[] = {
 static const char *
 dv_options[] = {
 	"--config       -c	configure file\n",	
-	"--daemonize    -d	daemonize process\n",	
 	"--help         -H	Print help information\n",	
 };
 
@@ -52,7 +50,7 @@ dv_help(void)
 }
 
 static const char *
-dv_optstring = "Hdc:";
+dv_optstring = "Hc:";
 
 int
 main(int argc, char **argv)  
@@ -60,7 +58,6 @@ main(int argc, char **argv)
     char                    *cf = NULL;
     dv_client_conf_t        conf = {};
     int                     c = 0;
-    int                     d = 0;
     int                     ret = 0;
 
     while((c = getopt_long(argc, argv, 
@@ -69,10 +66,6 @@ main(int argc, char **argv)
             case 'H':
                 dv_help();
                 return DV_OK;
-
-            case 'd':
-                d = 1;
-                break;
 
             case 'c':
                 cf = optarg;
@@ -95,7 +88,7 @@ main(int argc, char **argv)
         return -DV_ERROR;
     }
 
-    if (d) {
+    if (conf.cc_daemon) {
         if (dv_process_daemonize() != DV_OK) {
             fprintf(stderr, "Daemonize failed!\n");
             return -DV_ERROR;
