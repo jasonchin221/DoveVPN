@@ -1,4 +1,6 @@
 #include <string.h>
+#include <unistd.h>
+
 
 #include "dv_types.h"
 #include "dv_mem.h"
@@ -22,7 +24,6 @@ dv_trans_init(size_t buf_size)
     }
 
     dv_trans_buf.tb_buf_size = buf_size;
-    dv_trans_buf.tb_data_len = 0;
 
     return DV_OK;
 }
@@ -37,10 +38,42 @@ dv_trans_exit(void)
 }
 
 int
-dv_trans_data(int tun_fd, void *ssl, void *buf,
-        size_t buf_len, dv_proto_suite_t *suite)
+dv_trans_data_client(int tun_fd, void *ssl, void *buf,
+        size_t buf_len, const dv_proto_suite_t *suite)
 {
-    dv_assert(dv_trans_buf.tb_buf != NULL);
+    dv_trans_buf_t      *tbuf = &dv_trans_buf;
+    ssize_t             rlen = 0;
+    int                 wlen = 0;
+    int                 data_len = 0;
 
-    return DV_OK;
+    dv_assert(tbuf->tb_buf != NULL);
+
+    rlen = read(tun_fd, tbuf->tb_buf, tbuf->tb_buf_size);
+    if (rlen <= 0) {
+        return 0;
+    }
+    
+    if (rlen > buf_len) {
+        return 0;
+    }
+
+    wlen = suite->ps_write(ssl, tbuf->tb_buf, rlen);
+    if (wlen == rlen) {
+        return 0;
+    }
+
+    if (wlen < 0) {
+        if (wlen == -DV_EWANT_WRITE) {
+            wlen = 0;
+        } else {
+            fprintf(stderr, "Send data failed! mlen = %d\n", (int)rlen);
+            return 0;
+        } 
+    }
+
+    data_len = rlen - wlen;
+    memcpy(buf, (dv_u8 *)tbuf->tb_buf + wlen, data_len);
+
+    return data_len;
 }
+

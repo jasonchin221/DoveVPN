@@ -20,6 +20,7 @@
 #include "dv_socket.h"
 #include "dv_lib.h"
 #include "dv_proto.h"
+#include "dv_trans.h"
 
 #define DV_CLIENT_LOG_NAME  "DoveVPN-Client"
 #define DV_EVENT_MAX_NUM    10
@@ -27,11 +28,23 @@
 static dv_tun_t dv_client_tun;
 
 static void
-dv_add_epoll_event(int epfd, struct epoll_event *ev, int fd)
+dv_add_epoll_event(int epfd, struct epoll_event *ev, int fd, int event)
 {
     ev->data.fd = fd;
-    ev->events = EPOLLIN|EPOLLET;
+    ev->events = event|EPOLLET;
     epoll_ctl(epfd, EPOLL_CTL_ADD, fd, ev);
+}
+
+static void
+dv_add_epoll_read_event(int epfd, struct epoll_event *ev, int fd)
+{
+    dv_add_epoll_event(epfd, ev, fd, EPOLLIN);
+}
+
+static void
+dv_add_epoll_write_event(int epfd, struct epoll_event *ev, int fd)
+{
+    dv_add_epoll_event(epfd, ev, fd, EPOLLOUT);
 }
 
 int
@@ -39,6 +52,8 @@ dv_client_process(dv_client_conf_t *conf)
 {
     const dv_proto_suite_t      *suite = NULL;
     void                        *ssl = NULL;
+    dv_u8                       *wbuf = NULL;
+    size_t                      wbuf_len = 0;
     struct epoll_event          ev = {};
     struct epoll_event          events[DV_EVENT_MAX_NUM] = {};
     int                         epfd = -1;
@@ -95,8 +110,8 @@ dv_client_process(dv_client_conf_t *conf)
     if (epfd < 0) {
         goto out;
     }
-    dv_add_epoll_event(epfd, &ev, client_sockfd);
-    dv_add_epoll_event(epfd, &ev, tun_fd);
+    dv_add_epoll_read_event(epfd, &ev, client_sockfd);
+    dv_add_epoll_read_event(epfd, &ev, tun_fd);
 
     while (1) {
         nfds = epoll_wait(epfd, events, DV_EVENT_MAX_NUM, -1);
@@ -108,14 +123,21 @@ dv_client_process(dv_client_conf_t *conf)
 
                 /* Ciphertext arrived */
                 if (efd == client_sockfd) {
-                    dv_add_epoll_event(epfd, &ev, efd);
+                    dv_add_epoll_read_event(epfd, &ev, efd);
                     continue;
                 }
                 /* Plaintext arrived */
                 if (efd == tun_fd) {
-                    dv_add_epoll_event(epfd, &ev, efd);
+                    ret = dv_trans_data_client(tun_fd, ssl, wbuf, wbuf_len, suite);
+                    if (ret == 0) {
+                        dv_add_epoll_read_event(epfd, &ev, efd);
+                    } else {
+                        dv_add_epoll_write_event(epfd, &ev, efd);
+                    }
                     continue;
                 }
+            }
+            if (events[i].events & EPOLLOUT) {
             }
         }
     }
