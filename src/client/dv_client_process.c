@@ -21,6 +21,7 @@
 #include "dv_lib.h"
 #include "dv_proto.h"
 #include "dv_trans.h"
+#include "dv_buf.h"
 
 #define DV_CLIENT_LOG_NAME  "DoveVPN-Client"
 #define DV_EVENT_MAX_NUM    10
@@ -52,8 +53,7 @@ dv_client_process(dv_client_conf_t *conf)
 {
     const dv_proto_suite_t      *suite = NULL;
     void                        *ssl = NULL;
-    dv_u8                       *wbuf = NULL;
-    size_t                      wbuf_len = 0;
+    dv_buf_t                    *wbuf = NULL;
     struct epoll_event          ev = {};
     struct epoll_event          events[DV_EVENT_MAX_NUM] = {};
     int                         epfd = -1;
@@ -105,6 +105,11 @@ dv_client_process(dv_client_conf_t *conf)
         goto out;
     }
 
+    wbuf = dv_buf_alloc(100000);
+    if (wbuf == NULL) {
+        goto out;
+    }
+
     /* add tun fd and sockfd to epoll */
     epfd = epoll_create(1);
     if (epfd < 0) {
@@ -128,7 +133,9 @@ dv_client_process(dv_client_conf_t *conf)
                 }
                 /* Plaintext arrived */
                 if (efd == tun_fd) {
-                    ret = dv_trans_data_client(tun_fd, ssl, wbuf, wbuf_len, suite);
+                    ret = dv_trans_data_client(tun_fd, ssl, wbuf->bf_tail, 
+                            wbuf->bf_bsize - (wbuf->bf_tail - wbuf->bf_buf),
+                            suite);
                     if (ret == 0) {
                         dv_add_epoll_read_event(epfd, &ev, efd);
                     } else {
@@ -144,6 +151,7 @@ dv_client_process(dv_client_conf_t *conf)
     ret = DV_OK;
     close(epfd);
 out:
+    dv_buf_free(wbuf);
     if (ssl != NULL) {
         suite->ps_ssl_free(ssl);
     }
