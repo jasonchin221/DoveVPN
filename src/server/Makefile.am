@@ -4,6 +4,6 @@ dove_vpn_server_SOURCES = dv_server_main.c dv_server_conf.c dv_server_cycle.c \
 						  dv_server_core.c dv_ip_pool.c ../dv_lib.c \
 						  ../dv_tun.c ../dv_if.c dv_server_socket.c \
 						  ../dv_socket.c ../dv_proto.c ../dv_log.c \
-						  ../dv_openssl.c ../dv_msg.c
+						  ../dv_openssl.c ../dv_msg.c ../dv_trans.c
 
 AM_CFLAGS = -Wall -Werror -I$(srcdir)/../include -I$(srcdir)/../ -lm
