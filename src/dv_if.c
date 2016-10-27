@@ -6,7 +6,7 @@
 #include "dv_errno.h"
 #include "dv_if.h"
 
-#define DV_IF_SET_IP_STR_FORMAT     "ifconfig %s %s/%d up"
+#define DV_IF_SET_IP_STR_FORMAT     "ifconfig %s %s/%d up mtu %d"
 
 int
 dv_if_set(char *dev, char *ip, int mask, int mtu)
@@ -23,7 +23,7 @@ dv_if_set(char *dev, char *ip, int mask, int mtu)
         return DV_ERROR;
     }
 
-    snprintf(str, len, DV_IF_SET_IP_STR_FORMAT, dev, ip, mask);
+    snprintf(str, len, DV_IF_SET_IP_STR_FORMAT, dev, ip, mask, mtu);
     ret = system(str);
     if (ret != 0) {
         return DV_ERROR;
