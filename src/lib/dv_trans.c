@@ -38,7 +38,7 @@ dv_trans_exit(void)
 }
 
 int
-dv_trans_data_client(int tun_fd, void *ssl, dv_buf_t *buf,
+dv_trans_data_client(int tun_fd, void *ssl, dv_buffer_t *buf,
         const dv_proto_suite_t *suite)
 {
     dv_trans_buf_t      *tbuf = &dv_trans_buf;

@@ -1,12 +1,12 @@
 
-#include "dv_buf.h"
+#include "dv_buffer.h"
 #include "dv_mem.h"
 #include "dv_errno.h"
 
-dv_buf_t *
+dv_buffer_t *
 dv_buf_alloc(size_t size)
 {
-    dv_buf_t        *buf = NULL;
+    dv_buffer_t        *buf = NULL;
 
     buf = dv_malloc(sizeof(*buf) + size);
     if (buf == NULL) {
@@ -20,7 +20,7 @@ dv_buf_alloc(size_t size)
 }
 
 void
-dv_buf_free(dv_buf_t *buf)
+dv_buf_free(dv_buffer_t *buf)
 {
     if (buf == NULL) {
         return;
@@ -30,7 +30,7 @@ dv_buf_free(dv_buf_t *buf)
 }
 
 int
-dv_buf_data_to_ssl(void *ssl, dv_buf_t *buf, const dv_proto_suite_t *suite)
+dv_buf_data_to_ssl(void *ssl, dv_buffer_t *buf, const dv_proto_suite_t *suite)
 {
     int                 wlen = 0;
     int                 data_len = 0;

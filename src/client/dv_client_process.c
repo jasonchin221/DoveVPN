@@ -7,7 +7,6 @@
 #include <netinet/in.h>
 #include <sys/socket.h>
 #include <unistd.h>
-#include <sys/epoll.h>
 
 #include "dv_types.h"
 #include "dv_proto.h"
@@ -17,12 +16,12 @@
 #include "dv_client_conf.h"
 #include "dv_client_ssl.h"
 #include "dv_client_vpn.h"
+#include "dv_client_process.h"
 #include "dv_socket.h"
 #include "dv_lib.h"
 #include "dv_proto.h"
 #include "dv_trans.h"
-#include "dv_buf.h"
-#include "dv_client_process.h"
+#include "dv_event.h"
 
 #define DV_CLIENT_LOG_NAME  "DoveVPN-Client"
 #define DV_EVENT_MAX_NUM    10
@@ -30,23 +29,80 @@
 static dv_tun_t dv_client_tun;
 
 static void
-dv_add_epoll_event(int epfd, struct epoll_event *ev, int fd, int event)
+dv_cli_tun_write_handler(int sock, short event, void *arg);
+static void
+dv_cli_tun_read_handler(int sock, short event, void *arg)
 {
-    ev->data.fd = fd;
-    ev->events = event|EPOLLET;
-    epoll_ctl(epfd, EPOLL_CTL_ADD, fd, ev);
+    dv_event_t              *ev = arg; 
+    dv_cli_conn_t           *conn = ev->et_conn;
+    void                    *ssl = conn->cc_ssl;
+    const dv_proto_suite_t  *suite = conn->cc_suite;
+    int                     tun_fd = conn->cc_tun_fd;
+    int                     ret = DV_ERROR;
+
+    ret = dv_trans_data_client(tun_fd, ssl, conn->cc_wbuf, suite);
+    switch (ret) {
+        case DV_OK:
+            if (dv_event_add(ev) != DV_OK) {
+                return;
+            }
+            break;
+        case -DV_EWANT_WRITE:
+            ev->et_handler = dv_cli_tun_write_handler;
+            dv_event_set_write(sock, ev);
+            if (dv_event_add(ev) != DV_OK) {
+                return;
+            }
+            break;
+        case -DV_ETUN:
+            break;
+        default:
+            break;
+    }
+}
+ 
+static void
+dv_cli_tun_write_handler(int sock, short event, void *arg)
+{
+    dv_event_t              *ev = arg; 
+    dv_cli_conn_t           *conn = ev->et_conn;
+    void                    *ssl = conn->cc_ssl;
+    const dv_proto_suite_t  *suite = conn->cc_suite;
+    int                     tun_fd = conn->cc_tun_fd;
+    int                     ret = DV_ERROR;
+
+    ret = dv_buf_data_to_ssl(ssl, conn->cc_wbuf, suite);
+    switch (ret) {
+        case DV_OK:
+            while (1) {
+                ret = dv_trans_data_client(tun_fd, ssl,
+                        conn->cc_wbuf, suite);
+                if (ret == -DV_EWANT_READ) {
+                    break;
+                }
+
+                /* proc return value */
+                return;
+            }
+            ev->et_handler = dv_cli_tun_read_handler;
+            dv_event_set_read(sock, ev);
+            if (dv_event_add(ev) != DV_OK) {
+                return;
+            }
+            break;
+        case -DV_EWANT_WRITE:
+            if (dv_event_add(ev) != DV_OK) {
+                return;
+            }
+            break;
+        default:
+            break;
+    }
 }
 
 static void
-dv_add_epoll_read_event(int epfd, struct epoll_event *ev, int fd)
+dv_cli_ssl_read_handler(int sock, short event, void *arg)
 {
-    dv_add_epoll_event(epfd, ev, fd, EPOLLIN);
-}
-
-static void
-dv_add_epoll_write_event(int epfd, struct epoll_event *ev, int fd)
-{
-    dv_add_epoll_event(epfd, ev, fd, EPOLLOUT);
 }
 
 int
@@ -54,19 +110,19 @@ dv_client_process(dv_client_conf_t *conf)
 {
     const dv_proto_suite_t      *suite = NULL;
     void                        *ssl = NULL;
-    dv_buf_t                    *wbuf = NULL;
-    struct epoll_event          ev[DV_CLI_EVENT_MAX] = {};
-    struct epoll_event          events[DV_EVENT_MAX_NUM] = {};
-    int                         epfd = -1;
-    int                         efd = -1;
-    int                         event = 0;
-    int                         nfds = 0;
+    dv_event_t                  *ssl_ev = NULL;
+    dv_event_t                  *tun_ev = NULL;
+    dv_cli_conn_t               conn = {};
     int                         tun_fd = 0;
-    int                         i = 0;
     int                         client_sockfd = -1;
     int                         ret = DV_ERROR;
 
     dv_log_init(DV_CLIENT_LOG_NAME);
+
+    ret = dv_event_init();
+    if (ret != DV_OK) {
+        return ret;
+    }
 
     ret = dv_tun_init(&dv_client_tun);
     if (ret != DV_OK) {
@@ -107,85 +163,53 @@ dv_client_process(dv_client_conf_t *conf)
         goto out;
     }
 
-    wbuf = dv_buf_alloc(conf->cc_buffer_size);
-    if (wbuf == NULL) {
+    conn.cc_ssl = ssl;
+    conn.cc_suite = suite;
+    conn.cc_tun_fd = tun_fd;
+    conn.cc_rbuf = dv_buf_alloc(conf->cc_buffer_size);
+    if (conn.cc_rbuf == NULL) {
         goto out;
     }
 
-    /* add tun fd and sockfd to epoll */
-    epfd = epoll_create(1);
-    if (epfd < 0) {
+    conn.cc_wbuf = dv_buf_alloc(conf->cc_buffer_size);
+    if (conn.cc_wbuf == NULL) {
         goto out;
     }
-    dv_add_epoll_read_event(epfd, &ev[DV_CLI_EVENT_SSL], client_sockfd);
-    dv_add_epoll_read_event(epfd, &ev[DV_CLI_EVENT_TUN], tun_fd);
 
-    while (1) {
-        nfds = epoll_wait(epfd, events, DV_EVENT_MAX_NUM, -1);
-        for (i = 0; i < nfds; i++) {
-            if (events[i].events & EPOLLIN) {
-                if ((efd = events[i].data.fd) < 0) {
-                    continue;
-                }
-
-                /* Ciphertext arrived */
-                if (efd == client_sockfd) {
-                    event = DV_CLI_EVENT_SSL;
-                    dv_add_epoll_read_event(epfd, &ev[event], efd);
-                    continue;
-                }
-                /* Plaintext arrived */
-                if (efd == tun_fd) {
-                    event = DV_CLI_EVENT_TUN;
-                    ret = dv_trans_data_client(tun_fd, ssl, wbuf, suite);
-proc_tun_data:
-                    switch (ret) {
-                        case DV_OK:
-                            dv_add_epoll_read_event(epfd, &ev[event], efd);
-                            break;
-                        case -DV_EWANT_WRITE:
-                            dv_add_epoll_write_event(epfd, &ev[event], efd);
-                            break;
-                        case -DV_ETUN:
-                            break;
-                        default:
-                            break;
-                    }
-                    continue;
-                }
-            }
-            if (events[i].events & EPOLLOUT) {
-                if (efd == tun_fd) {
-                    event = DV_CLI_EVENT_TUN;
-                    ret = dv_buf_data_to_ssl(ssl, wbuf, suite);
-                    switch (ret) {
-                        case DV_OK:
-                            while (1) {
-                                ret = dv_trans_data_client(tun_fd, ssl,
-                                        wbuf, suite);
-                                if (ret == -DV_EWANT_READ) {
-                                    break;
-                                }
-
-                                goto proc_tun_data;
-                            }
-                            dv_add_epoll_read_event(epfd, &ev[event], efd);
-                            break;
-                        case -DV_EWANT_WRITE:
-                            dv_add_epoll_write_event(epfd, &ev[event], efd);
-                            break;
-                        default:
-                            break;
-                    }
-                    continue;
-                }
-            }
-        }
+    tun_ev = dv_event_create();
+    if (tun_ev == NULL) {
+        goto out;
     }
-    ret = DV_OK;
-    close(epfd);
+
+    tun_ev->et_conn = &conn;
+    dv_event_set_read(tun_fd, tun_ev);
+    tun_ev->et_handler = dv_cli_tun_read_handler;
+    if (dv_event_add(tun_ev) != DV_OK) {
+        fprintf(stderr, "Add event failed!\n");
+        goto out;
+    }
+
+    ssl_ev = dv_event_create();
+    if (ssl_ev == NULL) {
+        goto out;
+    }
+
+    ssl_ev->et_conn = &conn;
+    ssl_ev->et_handler = dv_cli_ssl_read_handler;
+    dv_event_set_read(client_sockfd, ssl_ev);
+    if (dv_event_add(ssl_ev) != DV_OK) {
+        goto out;
+    }
+
+    ret = dv_process_events();
+    printf("After loop, ret = %d\n", ret);
+    ret = DV_ERROR;
+
 out:
-    dv_buf_free(wbuf);
+    dv_buf_free(conn.cc_wbuf);
+    dv_buf_free(conn.cc_rbuf);
+    dv_event_destroy(ssl_ev);
+    dv_event_destroy(tun_ev);
     if (ssl != NULL) {
         suite->ps_ssl_free(ssl);
     }
@@ -195,6 +219,7 @@ out:
     }
     dv_client_ssl_exit(suite);
     dv_tun_exit(&dv_client_tun);
+    dv_event_exit();
     dv_log_exit();
     return ret;
 }
