@@ -3,10 +3,13 @@
 
 #include "dv_types.h"
 
+#define DV_BUF_FLAG_FULL    0x01
+
 typedef struct _dv_buf_t {
     dv_u8       *bf_buf;
     dv_u8       *bf_head;
     dv_u8       *bf_tail;
+    dv_u32      bf_flag;
     size_t      bf_bsize;
 } dv_buf_t;
 

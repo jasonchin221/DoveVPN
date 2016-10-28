@@ -133,9 +133,7 @@ dv_client_process(dv_client_conf_t *conf)
                 }
                 /* Plaintext arrived */
                 if (efd == tun_fd) {
-                    ret = dv_trans_data_client(tun_fd, ssl, wbuf->bf_tail, 
-                            wbuf->bf_bsize - (wbuf->bf_tail - wbuf->bf_buf),
-                            suite);
+                    ret = dv_trans_data_client(tun_fd, ssl, wbuf, suite);
                     if (ret == 0) {
                         dv_add_epoll_read_event(epfd, &ev, efd);
                     } else {
