@@ -10,6 +10,8 @@
 #define DV_CLI_CONF_PROCESSES       "processes"
 #define DV_CLI_CONF_DAEMON          "daemon"
 #define DV_CLI_CONF_PROTO           "proto"
+#define DV_CLI_CONF_CONNECTION      "connection"
+#define DV_CLI_CONF_BUFFER_SIZE     "buffer_size"
 
 static dv_client_conf_t dv_cli_conf;
 
@@ -47,6 +49,20 @@ static dv_conf_parse_t dv_cli_conf_processes[] = {
 
 #define DV_CLI_CONF_PROCESSES_ARRAY_SIZE DV_ARRAY_SIZE(dv_cli_conf_processes)
 
+static dv_conf_parse_t dv_cli_conf_connection[] = {
+    {
+        .cp_name = DV_CLI_CONF_BUFFER_SIZE,
+        .cp_len = sizeof(dv_cli_conf.cc_buffer_size),
+        .cp_offset = dv_offsetof(dv_client_conf_t, cc_buffer_size),
+        .cp_type = json_type_int,
+        .cp_necessary = DV_TRUE,
+        .cp_parse = dv_conf_parse_int,
+    },
+};
+
+#define DV_CLI_CONF_CONNECTION_ARRAY_SIZE DV_ARRAY_SIZE(dv_cli_conf_connection)
+
+
 static int
 dv_cli_conf_check(dv_client_conf_t *conf)
 {
@@ -71,6 +87,12 @@ dv_cli_conf_parse(dv_client_conf_t *conf, char *file)
     }
 
     ret = dv_cipher_conf_parse(&conf->cc_proto, DV_CLI_CONF_PROTO, file);
+    if (ret != DV_OK) {
+        return DV_ERROR;
+    }
+
+    ret = dv_config_parse(file, conf, DV_CLI_CONF_CONNECTION,
+        dv_cli_conf_connection, DV_CLI_CONF_CONNECTION_ARRAY_SIZE);
     if (ret != DV_OK) {
         return DV_ERROR;
     }

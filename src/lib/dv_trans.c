@@ -64,12 +64,16 @@ dv_trans_data_client(int tun_fd, void *ssl, dv_buf_t *buf,
     }
 
     rlen = read(tun_fd, tbuf->tb_buf, tbuf->tb_buf_size);
-    if (rlen <= 0) {
-        return DV_ERROR;
+    if (rlen == 0) {
+        return -DV_EWANT_READ;
+    }
+
+    if (rlen < 0) {
+        return -DV_ETUN;
     }
 
     if (rlen > space) {
-        return DV_ERROR;
+        return -DV_EWANT_WRITE;
     }
 
     if (data_len == 0) {

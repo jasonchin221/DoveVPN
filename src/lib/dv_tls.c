@@ -1,3 +1,4 @@
+#if 0
 #include <stdio.h>
 #include <getopt.h>
 #include <stdlib.h>
@@ -166,4 +167,4 @@ dv_dovessl_get_verify_result(void *s)
 }
 
 
-
+#endif

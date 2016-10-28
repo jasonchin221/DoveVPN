@@ -1,7 +1,7 @@
 AC_INIT([DoveVPN], [1.0], [jasonchin221@gmail.com])
 AM_INIT_AUTOMAKE([-Wall -Werror])
 AC_PROG_CC
-#AC_PROG_LIBTOOL
+AC_PROG_LIBTOOL
 AC_CONFIG_MACRO_DIR([m4])
 AC_CONFIG_HEADERS([config.h])
 
@@ -147,6 +147,7 @@ fi
 AC_CONFIG_FILES([
 				 Makefile
 				 src/Makefile
+				 src/lib/Makefile
 				 src/client/Makefile
 				 src/server/Makefile
 				 src/tools/Makefile
