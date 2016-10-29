@@ -13,7 +13,6 @@ typedef event_callback_fn dv_event_handler;
 
 typedef struct _dv_event_t {
     struct event        *et_ev;
-    struct event        *et_peer;
     struct timeval      *et_timeout;
     dv_event_handler    et_handler;
     dv_u32              et_flags;

@@ -12,6 +12,8 @@ enum {
 typedef struct _dv_cli_conn_t {
     void            *cc_ssl;
     void            *cc_conf;
+    void            *cc_ev_tun;
+    void            *cc_ev_ssl;
     const void      *cc_suite;
     int             cc_tun_fd;
     dv_u32          cc_state;

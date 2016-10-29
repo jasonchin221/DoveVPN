@@ -27,6 +27,7 @@
 #define DV_EVENT_MAX_NUM    10
 
 static dv_tun_t dv_client_tun;
+static int dv_cli_sockfd = -1;
 
 static void
 dv_cli_tun_write_handler(int sock, short event, void *arg);
@@ -35,19 +36,20 @@ static void *
 dv_cli_ssl_create(dv_client_conf_t *conf, const dv_proto_suite_t *suite)
 {  
     void        *ssl = NULL;
+    int         ret = DV_OK;
 
     if (dv_ip_version4(conf->cc_ip)) {
-        client_sockfd = dv_sk_connect_v4(conf->cc_ip, conf->cc_port);
+        dv_cli_sockfd = dv_sk_connect_v4(conf->cc_ip, conf->cc_port);
     } else {
-        client_sockfd = dv_sk_connect_v6(conf->cc_ip, conf->cc_port);
+        dv_cli_sockfd = dv_sk_connect_v6(conf->cc_ip, conf->cc_port);
     }
 
-    if (client_sockfd < 0) {
+    if (dv_cli_sockfd < 0) {
         DV_LOG(DV_LOG_INFO, "Sk create failed!\n");
         goto out;
     }
 
-    ssl = dv_client_ssl_conn_create(suite, client_sockfd);
+    ssl = dv_client_ssl_conn_create(suite, dv_cli_sockfd);
     if (ssl == NULL) {
         goto out;
     }
@@ -65,8 +67,8 @@ out:
         suite->ps_ssl_free(ssl);
     }
 
-    if (client_sockfd >= 0) {
-        close(client_sockfd);
+    if (dv_cli_sockfd >= 0) {
+        close(dv_cli_sockfd);
     }
 
     return NULL;
@@ -76,7 +78,7 @@ static void *
 dv_cli_ssl_recreate(dv_client_conf_t *conf, const dv_proto_suite_t *suite,
             void *ssl)
 {  
-    close(client_sockfd);
+    close(dv_cli_sockfd);
     suite->ps_ssl_free(ssl);
 
     return dv_cli_ssl_create(conf, suite);
@@ -117,7 +119,7 @@ dv_cli_tun_read_handler(int sock, short event, void *arg)
         default:
             conn->cc_ssl = dv_cli_ssl_recreate(conf, suite, ssl);
             if (conn->cc_ssl == NULL) {
-                dv_event_del(ev->et_peer);
+                dv_event_del(conn->cc_ev_ssl);
                 conn->cc_state = DV_CLI_CONN_STATE_RECONNECTING;
                 /* Add timer to try to rebuild ssl connection */
                 return;
@@ -194,7 +196,6 @@ dv_client_process(dv_client_conf_t *conf)
     dv_event_t                  *tun_ev = NULL;
     dv_cli_conn_t               conn = {};
     int                         tun_fd = 0;
-    int                         client_sockfd = -1;
     int                         ret = DV_ERROR;
 
     dv_log_init(DV_CLIENT_LOG_NAME);
@@ -222,7 +223,7 @@ dv_client_process(dv_client_conf_t *conf)
         goto out;
     }
 
-    ssl = dv_cli_ssl_create(suite, conf);
+    ssl = dv_cli_ssl_create(conf, suite);
     if (ssl == NULL) {
         DV_LOG(DV_LOG_INFO, "Create ssl failed!\n");
         return DV_ERROR;
@@ -264,9 +265,9 @@ dv_client_process(dv_client_conf_t *conf)
     ssl_ev->et_conn = &conn;
     ssl_ev->et_conn_free = dv_cli_conn_free;
     ssl_ev->et_handler = dv_cli_ssl_read_handler;
-    ssl_ev->et_peer = tun_ev;
-    tun_ev->et_peer = ssl_ev->et_peer;
-    dv_event_set_read(client_sockfd, ssl_ev);
+    conn.cc_ev_tun = tun_ev;
+    conn.cc_ev_ssl = ssl_ev;
+    dv_event_set_read(dv_cli_sockfd, ssl_ev);
     if (dv_event_add(ssl_ev) != DV_OK) {
         goto out;
     }
@@ -284,8 +285,8 @@ out:
         suite->ps_ssl_free(ssl);
     }
 
-    if (client_sockfd >= 0) {
-        close(client_sockfd);
+    if (dv_cli_sockfd >= 0) {
+        close(dv_cli_sockfd);
     }
     dv_client_ssl_exit(suite);
     dv_tun_exit(&dv_client_tun);
