@@ -117,12 +117,17 @@ dv_cli_tun_read_handler(int sock, short event, void *arg)
             /* Do nothing */
             break;
         default:
-            conn->cc_ssl = dv_cli_ssl_recreate(conf, suite, ssl);
-            if (conn->cc_ssl == NULL) {
-                dv_event_del(conn->cc_ev_ssl);
-                conn->cc_state = DV_CLI_CONN_STATE_RECONNECTING;
-                /* Add timer to try to rebuild ssl connection */
-                return;
+            while (1) {
+                conn->cc_ssl = dv_cli_ssl_recreate(conf, suite, conn->cc_ssl);
+                if (conn->cc_ssl != NULL) {
+                    dv_event_del(conn->cc_ev_ssl);
+                    dv_event_set_read(dv_cli_sockfd, conn->cc_ev_ssl);
+                    if (dv_event_add(conn->cc_ev_ssl) != DV_OK) {
+                        return;
+                    }
+                    break;
+                }
+                sleep(conn->cc_reconn_interval);
             }
             if (dv_event_add(ev) != DV_OK) {
                 return;
