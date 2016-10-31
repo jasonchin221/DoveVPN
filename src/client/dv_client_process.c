@@ -31,6 +31,8 @@ static int dv_cli_sockfd = -1;
 
 static void
 dv_cli_tun_write_handler(int sock, short event, void *arg);
+static void
+dv_cli_ssl_read_handler(int sock, short event, void *arg);
 
 static void *
 dv_cli_ssl_create(dv_client_conf_t *conf, const dv_proto_suite_t *suite)
@@ -201,8 +203,78 @@ dv_cli_tun_write_handler(int sock, short event, void *arg)
 }
 
 static void
+dv_cli_ssl_write_handler(int sock, short event, void *arg)
+{
+    dv_event_t              *ev = arg; 
+    dv_cli_conn_t           *conn = ev->et_conn;
+    dv_buffer_t             *rbuf = conn->cc_rbuf;
+    int                     tun_fd = conn->cc_tun_fd;
+    size_t                  ip_tlen = 0;
+    int                     data_len = 0;
+    int                     ret = DV_ERROR;
+
+    data_len = rbuf->bf_head - rbuf->bf_tail;
+    ip_tlen = dv_ip_datalen(rbuf->bf_head, data_len);
+    ret = dv_trans_ssl_to_tun(tun_fd, rbuf, ip_tlen);
+    if (ret != DV_OK) {
+        ev->et_handler = dv_cli_ssl_write_handler;
+        if (dv_event_add(ev) != DV_OK) {
+            return;
+        }
+        return;
+    }
+
+    dv_cli_ssl_read_handler(sock, event, arg);
+}
+
+static void
 dv_cli_ssl_read_handler(int sock, short event, void *arg)
 {
+    dv_event_t              *ev = arg; 
+    dv_cli_conn_t           *conn = ev->et_conn;
+    void                    *ssl = conn->cc_ssl;
+    const dv_proto_suite_t  *suite = conn->cc_suite;
+    dv_client_conf_t        *conf = conn->cc_conf;
+    dv_buffer_t             *rbuf = conn->cc_rbuf;
+    int                     tun_fd = conn->cc_tun_fd;
+    int                     rlen = 0;
+    size_t                  ip_tlen = 0;
+    int                     data_len = 0;
+    int                     ret = DV_ERROR;
+
+    while (1) {
+        rlen = suite->ps_read(ssl, rbuf->bf_tail, rbuf->bf_bsize - 
+                (rbuf->bf_tail - rbuf->bf_buf));
+        if (rlen > 0) {
+            rbuf->bf_tail += rlen;
+            data_len = rbuf->bf_head - rbuf->bf_tail;
+            ip_tlen = dv_ip_datalen(rbuf->bf_head, data_len);
+            if (ip_tlen == 0 || ip_tlen > data_len) {
+                /* Data not long enough */
+                continue;
+            }
+            ret = dv_trans_ssl_to_tun(tun_fd, rbuf, ip_tlen);
+            if (ret != DV_OK) {
+                ev->et_handler = dv_cli_ssl_write_handler;
+                dv_event_set_write(sock, ev);
+                if (dv_event_add(ev) != DV_OK) {
+                    return;
+                }
+                break;
+            }
+        }
+
+        //rbuf->bf_tail = rbuf->bf_buf;
+        if (rlen == -DV_EWANT_READ) {
+            if (dv_event_add(ev) != DV_OK) {
+                return;
+            }
+            break;
+        }
+
+        dv_cli_ssl_reconnect(conf, conn, suite);
+        continue;
+    }
 }
 
 static void

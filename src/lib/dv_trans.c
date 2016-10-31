@@ -8,6 +8,9 @@
 #include "dv_proto.h"
 #include "dv_trans.h"
 #include "dv_assert.h"
+#include "dv_lib.h"
+
+#define DV_IP_HEADER_MIN_LEN    20
 
 dv_trans_buf_t dv_trans_buf;
 
@@ -112,4 +115,29 @@ dv_trans_data_client(int tun_fd, void *ssl, dv_buffer_t *buf,
 
     return -DV_EWANT_WRITE;
 }
+
+int
+dv_trans_ssl_to_tun(int tun_fd, dv_buffer_t *rbuf, size_t data_len)
+{
+    ssize_t                 wlen = 0;
+    int                     dlen = 0;
+
+    wlen = write(tun_fd, rbuf->bf_head, data_len);
+    if (wlen == data_len) {
+        rbuf->bf_head += data_len;
+        dlen = rbuf->bf_tail - rbuf->bf_head;
+        if (dlen < DV_IP_HEADER_MIN_LEN || 
+                dv_ip_datalen(rbuf->bf_head, dlen) >
+                rbuf->bf_bsize - (rbuf->bf_head - rbuf->bf_buf)) {
+            memmove(rbuf->bf_buf, rbuf->bf_head, dlen);
+            rbuf->bf_tail -= (rbuf->bf_head - rbuf->bf_buf);
+            rbuf->bf_head = rbuf->bf_buf;
+        }
+
+        return DV_OK;
+    }
+
+    return -DV_EWANT_WRITE;
+}
+
 

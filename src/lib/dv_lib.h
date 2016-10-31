@@ -3,6 +3,8 @@
 
 #include <arpa/inet.h>
 #include <string.h>
+#include <linux/ip.h>
+#include <linux/ipv6.h>
 
 #include "dv_types.h"
 
@@ -41,6 +43,26 @@ static inline int
 dv_ip_version4(char *ip)
 {
     return (strstr(ip, ":") == NULL);
+}
+
+static inline size_t
+dv_ip_datalen(void *h, size_t len)
+{
+    struct iphdr    *ip4 = h;
+    struct ipv6hdr  *ip6 = h;
+
+    if (ip4->version == 4) {
+        if (len < sizeof(*ip4)) {
+            return 0;
+        }
+        return DV_NTOHS(ip4->tot_len);
+    }
+
+    if (len < sizeof(*ip6)) {
+        return 0;
+    }
+
+    return sizeof(*ip6) + DV_NTOHS(ip6->payload_len);
 }
 
 extern int dv_process_daemonize(void);
