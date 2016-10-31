@@ -85,6 +85,24 @@ dv_cli_ssl_recreate(dv_client_conf_t *conf, const dv_proto_suite_t *suite,
 }
 
 static void
+dv_cli_ssl_reconnect(dv_client_conf_t *conf, dv_cli_conn_t *conn,
+        const dv_proto_suite_t *suite)
+{
+    while (1) {
+        conn->cc_ssl = dv_cli_ssl_recreate(conf, suite, conn->cc_ssl);
+        if (conn->cc_ssl != NULL) {
+            dv_event_del(conn->cc_ev_ssl);
+            dv_event_set_read(dv_cli_sockfd, conn->cc_ev_ssl);
+            if (dv_event_add(conn->cc_ev_ssl) != DV_OK) {
+                return;
+            }
+            break;
+        }
+        sleep(conf->cc_reconn_interval);
+    }
+}
+ 
+static void
 dv_cli_tun_read_handler(int sock, short event, void *arg)
 {
     dv_event_t              *ev = arg; 
@@ -117,18 +135,7 @@ dv_cli_tun_read_handler(int sock, short event, void *arg)
             /* Do nothing */
             break;
         default:
-            while (1) {
-                conn->cc_ssl = dv_cli_ssl_recreate(conf, suite, conn->cc_ssl);
-                if (conn->cc_ssl != NULL) {
-                    dv_event_del(conn->cc_ev_ssl);
-                    dv_event_set_read(dv_cli_sockfd, conn->cc_ev_ssl);
-                    if (dv_event_add(conn->cc_ev_ssl) != DV_OK) {
-                        return;
-                    }
-                    break;
-                }
-                sleep(conn->cc_reconn_interval);
-            }
+            dv_cli_ssl_reconnect(conf, conn, suite);
             if (dv_event_add(ev) != DV_OK) {
                 return;
             }
@@ -143,35 +150,53 @@ dv_cli_tun_write_handler(int sock, short event, void *arg)
     dv_cli_conn_t           *conn = ev->et_conn;
     void                    *ssl = conn->cc_ssl;
     const dv_proto_suite_t  *suite = conn->cc_suite;
+    dv_client_conf_t        *conf = conn->cc_conf;
     int                     tun_fd = conn->cc_tun_fd;
     int                     ret = DV_ERROR;
 
-    ret = dv_buf_data_to_ssl(ssl, conn->cc_wbuf, suite);
-    switch (ret) {
-        case DV_OK:
-            while (1) {
-                ret = dv_trans_data_client(tun_fd, ssl,
-                        conn->cc_wbuf, suite);
-                if (ret == -DV_EWANT_READ) {
-                    break;
-                }
+    while (1) {
+        ret = dv_buf_data_to_ssl(ssl, conn->cc_wbuf, suite);
+        switch (ret) {
+            case DV_OK:
+                while (1) {
+                    ret = dv_trans_data_client(tun_fd, ssl,
+                            conn->cc_wbuf, suite);
+                    switch (ret) {
+                        case -DV_EWANT_READ:
+                            ev->et_handler = dv_cli_tun_read_handler;
+                            dv_event_set_read(sock, ev);
+                            break;
 
-                /* proc return value */
+                        case -DV_EWANT_WRITE:
+                            ev->et_handler = dv_cli_tun_write_handler;
+                            break;
+
+                        case -DV_ETUN:
+                            ev->et_handler = dv_cli_tun_read_handler;
+                            dv_event_set_read(sock, ev);
+                            break;
+
+                        case DV_OK:
+                            continue;
+
+                        default:
+                            dv_cli_ssl_reconnect(conf, conn, suite);
+                            continue;
+                    }
+                    if (dv_event_add(ev) != DV_OK) {
+                        return;
+                    }
+                    return;
+                }
+            case -DV_EWANT_WRITE:
+                if (dv_event_add(ev) != DV_OK) {
+                    return;
+                }
                 return;
-            }
-            ev->et_handler = dv_cli_tun_read_handler;
-            dv_event_set_read(sock, ev);
-            if (dv_event_add(ev) != DV_OK) {
-                return;
-            }
-            break;
-        case -DV_EWANT_WRITE:
-            if (dv_event_add(ev) != DV_OK) {
-                return;
-            }
-            break;
-        default:
-            break;
+            default:
+                dv_cli_ssl_reconnect(conf, conn, suite);
+                break;
+        }
     }
 }
 

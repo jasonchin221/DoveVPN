@@ -61,8 +61,8 @@ static dv_conf_parse_t dv_cli_conf_connection[] = {
     },
     {
         .cp_name = DV_CLI_CONF_RECONN_INTERVAL,
-        .cp_len = sizeof(dv_cli_conf.reconn_interval),
-        .cp_offset = dv_offsetof(dv_client_conf_t, reconn_interval),
+        .cp_len = sizeof(dv_cli_conf.cc_reconn_interval),
+        .cp_offset = dv_offsetof(dv_client_conf_t, cc_reconn_interval),
         .cp_type = json_type_int,
         .cp_necessary = DV_TRUE,
         .cp_parse = dv_conf_parse_int,
