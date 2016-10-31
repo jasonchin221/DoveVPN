@@ -9,6 +9,7 @@ typedef struct _dv_client_conf_t {
     int                         cc_port;
     int                         cc_daemon;
     int                         cc_buffer_size;
+    int                         cc_reconn_interval;
     dv_cipher_conf_t            cc_proto;
 } dv_client_conf_t;
 

@@ -12,6 +12,7 @@
 #define DV_CLI_CONF_PROTO           "proto"
 #define DV_CLI_CONF_CONNECTION      "connection"
 #define DV_CLI_CONF_BUFFER_SIZE     "buffer_size"
+#define DV_CLI_CONF_RECONN_INTERVAL "reconn_interval"
 
 static dv_client_conf_t dv_cli_conf;
 
@@ -54,6 +55,14 @@ static dv_conf_parse_t dv_cli_conf_connection[] = {
         .cp_name = DV_CLI_CONF_BUFFER_SIZE,
         .cp_len = sizeof(dv_cli_conf.cc_buffer_size),
         .cp_offset = dv_offsetof(dv_client_conf_t, cc_buffer_size),
+        .cp_type = json_type_int,
+        .cp_necessary = DV_TRUE,
+        .cp_parse = dv_conf_parse_int,
+    },
+    {
+        .cp_name = DV_CLI_CONF_RECONN_INTERVAL,
+        .cp_len = sizeof(dv_cli_conf.reconn_interval),
+        .cp_offset = dv_offsetof(dv_client_conf_t, reconn_interval),
         .cp_type = json_type_int,
         .cp_necessary = DV_TRUE,
         .cp_parse = dv_conf_parse_int,
