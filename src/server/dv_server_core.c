@@ -10,8 +10,8 @@
 #define DV_SRV_LOG_NAME     "DoveVPN-Server"
 
 dv_u32 dv_ncpu;
-const dv_proto_suite_t *dv_srv_proto_suite;
-void *dv_srv_ctx;
+const dv_proto_suite_t *dv_srv_ssl_proto_suite;
+void *dv_srv_ssl_ctx;
 
 int
 dv_srv_init(dv_srv_conf_t *conf)
@@ -22,8 +22,8 @@ dv_srv_init(dv_srv_conf_t *conf)
     int                     ret = DV_ERROR;
 
     dv_log_init(DV_SRV_LOG_NAME);
-    dv_srv_proto_suite = dv_proto_suite_find(conf->sc_proto.cc_proto_type);
-    if (dv_srv_proto_suite == NULL) {
+    dv_srv_ssl_proto_suite = dv_proto_suite_find(conf->sc_proto.cc_proto_type);
+    if (dv_srv_ssl_proto_suite == NULL) {
         DV_LOG(DV_LOG_INFO, "Find suite failed!\n");
         return DV_ERROR;
     }
@@ -33,7 +33,7 @@ dv_srv_init(dv_srv_conf_t *conf)
         goto out;
     }
 
-    suite = dv_srv_proto_suite;
+    suite = dv_srv_ssl_proto_suite;
     /* SSL 库初始化 */
     suite->ps_library_init();
     /* 载入所有 SSL 算法 */
@@ -48,7 +48,7 @@ dv_srv_init(dv_srv_conf_t *conf)
         goto out;
     }
 
-    dv_srv_ctx = ctx;
+    dv_srv_ssl_ctx = ctx;
     /* 载入用户的数字证书, 此证书用来发送给客户端。 证书里包含有公钥 */
     if (suite->ps_ctx_use_certificate_file(ctx, cipher->cc_cert) < 0) {
         DV_LOG(DV_LOG_INFO, "Load certificate failed!\n");
@@ -81,11 +81,11 @@ out:
 void
 dv_srv_exit(void)
 {
-    if (dv_srv_proto_suite == NULL) {
+    if (dv_srv_ssl_proto_suite == NULL) {
         return;
     }
 
-    if (dv_srv_ctx != NULL) {
-        dv_srv_proto_suite->ps_ctx_free(dv_srv_ctx);
+    if (dv_srv_ssl_ctx != NULL) {
+        dv_srv_ssl_proto_suite->ps_ctx_free(dv_srv_ssl_ctx);
     }
 }

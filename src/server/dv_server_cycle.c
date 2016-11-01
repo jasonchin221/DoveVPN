@@ -4,16 +4,15 @@
 #include "dv_server_core.h"
 #include "dv_errno.h"
 #include "dv_ip_pool.h"
-#include "dv_tun.h"
 #include "dv_if.h"
 #include "dv_event.h"
 #include "dv_log.h"
+#include "dv_server_socket.h"
+#include "dv_server_cycle.h"
 
-static dv_tun_t dv_srv_tun = {
+dv_tun_t dv_srv_tun = {
     .tn_fd = -1,
 };
-
-extern int dv_srv_socket_init(char *ip, int port);
 
 static int
 dv_srv_create_and_set_tun(dv_tun_t *tun, int seq, int mask, int mtu,
@@ -83,7 +82,7 @@ dv_server_cycle(dv_srv_conf_t *conf)
     }
 
     /* Libevent */
-    ret = dv_srv_socket_init(conf->sc_listen_ip, conf->sc_port);
+    ret = dv_srv_ssl_socket_init(conf->sc_listen_ip, conf->sc_port);
     if (ret != DV_OK) {
         goto out;
     }

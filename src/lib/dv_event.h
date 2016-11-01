@@ -18,7 +18,7 @@ typedef struct _dv_event_t {
     dv_u32              et_flags;
     void                *et_conn;
     void                (*et_conn_free)(void *conn);
-}dv_event_t;
+} dv_event_t;
 
 typedef struct _dv_event_register_t {
     dv_event_t      *er_ev;

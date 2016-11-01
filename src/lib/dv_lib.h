@@ -3,8 +3,8 @@
 
 #include <arpa/inet.h>
 #include <string.h>
-#include <linux/ip.h>
-#include <linux/ipv6.h>
+#include <netinet/ip.h>
+#include <netinet/ip6.h>
 
 #include "dv_types.h"
 
@@ -49,7 +49,7 @@ static inline size_t
 dv_ip_datalen(void *h, size_t len)
 {
     struct iphdr    *ip4 = h;
-    struct ipv6hdr  *ip6 = h;
+    struct ip6_hdr  *ip6 = h;
 
     if (ip4->version == 4) {
         if (len < sizeof(*ip4)) {
@@ -62,7 +62,7 @@ dv_ip_datalen(void *h, size_t len)
         return 0;
     }
 
-    return sizeof(*ip6) + DV_NTOHS(ip6->payload_len);
+    return sizeof(*ip6) + DV_NTOHS(ip6->ip6_ctlun.ip6_un1.ip6_un1_plen);
 }
 
 extern int dv_process_daemonize(void);
