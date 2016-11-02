@@ -132,12 +132,12 @@ dv_cli_tun_read_handler(int sock, short event, void *arg)
             case DV_OK:
                 continue;
             case -DV_EWANT_READ:
-                if (dv_event_add(&dv_cli_tun_rev) != DV_OK) {
+                if (dv_event_add(ev) != DV_OK) {
                     return;
                 }
                 return;
             case -DV_EWANT_WRITE:
-                if (dv_event_add(&dv_cli_ssl_wev) != DV_OK) {
+                if (dv_event_add(ev->et_peer_ev) != DV_OK) {
                     return;
                 }
                 break;
@@ -158,18 +158,16 @@ static void
 dv_cli_tun_write_handler(int sock, short event, void *arg)
 {
     dv_event_t              *ev = arg; 
-    dv_event_t              *ev_add = NULL;
     dv_cli_conn_t           *conn = ev->et_conn;
     void                    *ssl = conn->cc_ssl;
     const dv_proto_suite_t  *suite = conn->cc_suite;
-    int                     tun_fd = conn->cc_tun_fd;
     int                     ret = DV_ERROR;
 
     while (1) {
         ret = dv_buf_data_to_ssl(ssl, conn->cc_wbuf, suite);
         switch (ret) {
             case DV_OK:
-                dv_cli_tun_read_handler(sock, event, &dv_cli_tun_rev);
+                dv_cli_tun_read_handler(sock, event, ev->et_peer_ev);
                 return;
             case -DV_EWANT_WRITE:
                 if (dv_event_add(ev) != DV_OK) {
@@ -177,7 +175,7 @@ dv_cli_tun_write_handler(int sock, short event, void *arg)
                 }
                 return;
             default:
-                dv_cli_ssl_reconnect(sock, &dv_cli_ssl_rev, suite);
+                dv_cli_ssl_reconnect(sock, ev, suite);
                 break;
         }
     }
@@ -192,7 +190,7 @@ dv_cli_ssl_write_handler(int sock, short event, void *arg)
     int                     tun_fd = conn->cc_tun_fd;
 
     dv_ssl_write_handler(sock, event, arg, rbuf, tun_fd,
-            dv_cli_ssl_read_handler, &dv_cli_ssl_rev);
+            dv_cli_ssl_read_handler);
 }
 
 static void
@@ -206,7 +204,7 @@ dv_cli_ssl_read_handler(int sock, short event, void *arg)
     int                     tun_fd = conn->cc_tun_fd;
 
     dv_ssl_read_handler(sock, event, arg, ssl, tun_fd, suite, rbuf,
-        &dv_cli_tun_wrev, dv_cli_ssl_reconnect);
+        dv_cli_ssl_reconnect);
 }
 
 static void
@@ -297,9 +295,14 @@ dv_client_process(dv_client_conf_t *conf)
     dv_event_set_read(dv_cli_sockfd, ssl_rev);
     ssl_wev->et_handler = dv_cli_ssl_write_handler;
     dv_event_set_write(dv_cli_sockfd, ssl_wev);
-    if (dv_event_add(ssl_ev) != DV_OK) {
+    if (dv_event_add(ssl_rev) != DV_OK) {
         goto out;
     }
+
+    ssl_rev->et_peer_ev = tun_wev;
+    tun_wev->et_peer_ev = ssl_rev;
+    ssl_wev->et_peer_ev = tun_rev;
+    tun_rev->et_peer_ev = ssl_wev;
 
     ret = dv_process_events();
     printf("After loop, ret = %d\n", ret);
