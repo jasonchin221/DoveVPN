@@ -28,6 +28,10 @@
 
 static dv_tun_t dv_client_tun;
 static int dv_cli_sockfd = -1;
+static dv_event_t dv_cli_ssl_rev;
+static dv_event_t dv_cli_ssl_wev;
+static dv_event_t dv_cli_tun_rev;
+static dv_event_t dv_cli_tun_wev;
 
 static void
 dv_cli_tun_write_handler(int sock, short event, void *arg);
@@ -90,15 +94,16 @@ dv_cli_ssl_recreate(dv_client_conf_t *conf, const dv_proto_suite_t *suite,
 static void
 dv_cli_ssl_reconnect(int sock, dv_event_t *ev, const dv_proto_suite_t *suite)
 {
+    dv_event_t          *ssl_rev = &dv_cli_ssl_rev;
     dv_cli_conn_t       *conn = ev->et_conn;
     dv_client_conf_t    *conf = conn->cc_conf;
 
     while (1) {
         conn->cc_ssl = dv_cli_ssl_recreate(conf, suite, conn->cc_ssl);
         if (conn->cc_ssl != NULL) {
-            dv_event_del(conn->cc_ev_ssl);
-            dv_event_set_read(dv_cli_sockfd, conn->cc_ev_ssl);
-            if (dv_event_add(conn->cc_ev_ssl) != DV_OK) {
+            dv_event_del(ssl_rev);
+            dv_event_set_read(dv_cli_sockfd, ssl_rev);
+            if (dv_event_add(ssl_rev) != DV_OK) {
                 return;
             }
             break;
@@ -121,29 +126,31 @@ dv_cli_tun_read_handler(int sock, short event, void *arg)
         return;
     }
 
-    ret = dv_trans_data_client(tun_fd, ssl, conn->cc_wbuf, suite);
-    switch (ret) {
-        case DV_OK:
-            if (dv_event_add(ev) != DV_OK) {
+    while (1) {
+        ret = dv_trans_data_client(tun_fd, ssl, conn->cc_wbuf, suite);
+        switch (ret) {
+            case DV_OK:
+                continue;
+            case -DV_EWANT_READ:
+                if (dv_event_add(&dv_cli_tun_rev) != DV_OK) {
+                    return;
+                }
                 return;
-            }
-            break;
-        case -DV_EWANT_WRITE:
-            ev->et_handler = dv_cli_tun_write_handler;
-            dv_event_set_write(sock, ev);
-            if (dv_event_add(ev) != DV_OK) {
-                return;
-            }
-            break;
-        case -DV_ETUN:
-            /* Do nothing */
-            break;
-        default:
-            dv_cli_ssl_reconnect(sock, ev, suite);
-            if (dv_event_add(ev) != DV_OK) {
-                return;
-            }
-            break;
+            case -DV_EWANT_WRITE:
+                if (dv_event_add(&dv_cli_ssl_wev) != DV_OK) {
+                    return;
+                }
+                break;
+            case -DV_ETUN:
+                /* Do nothing */
+                break;
+            default:
+                dv_cli_ssl_reconnect(sock, ev, suite);
+                if (dv_event_add(ev) != DV_OK) {
+                    return;
+                }
+                break;
+        }
     }
 }
  
@@ -151,6 +158,7 @@ static void
 dv_cli_tun_write_handler(int sock, short event, void *arg)
 {
     dv_event_t              *ev = arg; 
+    dv_event_t              *ev_add = NULL;
     dv_cli_conn_t           *conn = ev->et_conn;
     void                    *ssl = conn->cc_ssl;
     const dv_proto_suite_t  *suite = conn->cc_suite;
@@ -161,43 +169,15 @@ dv_cli_tun_write_handler(int sock, short event, void *arg)
         ret = dv_buf_data_to_ssl(ssl, conn->cc_wbuf, suite);
         switch (ret) {
             case DV_OK:
-                while (1) {
-                    ret = dv_trans_data_client(tun_fd, ssl,
-                            conn->cc_wbuf, suite);
-                    switch (ret) {
-                        case -DV_EWANT_READ:
-                            ev->et_handler = dv_cli_tun_read_handler;
-                            dv_event_set_read(sock, ev);
-                            break;
-
-                        case -DV_EWANT_WRITE:
-                            ev->et_handler = dv_cli_tun_write_handler;
-                            break;
-
-                        case -DV_ETUN:
-                            ev->et_handler = dv_cli_tun_read_handler;
-                            dv_event_set_read(sock, ev);
-                            break;
-
-                        case DV_OK:
-                            continue;
-
-                        default:
-                            dv_cli_ssl_reconnect(sock, ev, suite);
-                            continue;
-                    }
-                    if (dv_event_add(ev) != DV_OK) {
-                        return;
-                    }
-                    return;
-                }
+                dv_cli_tun_read_handler(sock, event, &dv_cli_tun_rev);
+                return;
             case -DV_EWANT_WRITE:
                 if (dv_event_add(ev) != DV_OK) {
                     return;
                 }
                 return;
             default:
-                dv_cli_ssl_reconnect(sock, ev, suite);
+                dv_cli_ssl_reconnect(sock, &dv_cli_ssl_rev, suite);
                 break;
         }
     }
@@ -212,8 +192,7 @@ dv_cli_ssl_write_handler(int sock, short event, void *arg)
     int                     tun_fd = conn->cc_tun_fd;
 
     dv_ssl_write_handler(sock, event, arg, rbuf, tun_fd,
-            dv_cli_ssl_read_handler,
-            dv_cli_ssl_write_handler);
+            dv_cli_ssl_read_handler, &dv_cli_ssl_rev);
 }
 
 static void
@@ -227,7 +206,7 @@ dv_cli_ssl_read_handler(int sock, short event, void *arg)
     int                     tun_fd = conn->cc_tun_fd;
 
     dv_ssl_read_handler(sock, event, arg, ssl, tun_fd, suite, rbuf,
-        dv_cli_ssl_write_handler, dv_cli_ssl_reconnect);
+        &dv_cli_tun_wrev, dv_cli_ssl_reconnect);
 }
 
 static void
@@ -238,7 +217,9 @@ dv_cli_conn_free(void *conn)
     const dv_proto_suite_t  *suite = c->cc_suite;
 
     if (ssl != NULL) {
+        suite->ps_shutdown(ssl);
         suite->ps_ssl_free(ssl);
+        c->cc_ssl = NULL;
     }
 }
 
@@ -247,8 +228,10 @@ dv_client_process(dv_client_conf_t *conf)
 {
     const dv_proto_suite_t      *suite = NULL;
     void                        *ssl = NULL;
-    dv_event_t                  *ssl_ev = NULL;
-    dv_event_t                  *tun_ev = NULL;
+    dv_event_t                  *ssl_rev = &dv_cli_ssl_rev;
+    dv_event_t                  *ssl_wev = &dv_cli_ssl_wev;
+    dv_event_t                  *tun_rev = &dv_cli_tun_rev;
+    dv_event_t                  *tun_wev = &dv_cli_tun_wev;
     dv_cli_conn_t               conn = {};
     int                         tun_fd = 0;
     int                         ret = DV_ERROR;
@@ -299,30 +282,21 @@ dv_client_process(dv_client_conf_t *conf)
         goto out;
     }
 
-    tun_ev = dv_event_create();
-    if (tun_ev == NULL) {
-        goto out;
-    }
-
-    tun_ev->et_conn = &conn;
-    dv_event_set_read(tun_fd, tun_ev);
-    tun_ev->et_handler = dv_cli_tun_read_handler;
-    if (dv_event_add(tun_ev) != DV_OK) {
+    tun_rev->et_conn = tun_wev->et_conn = &conn;
+    dv_event_set_read(tun_fd, tun_rev);
+    tun_rev->et_handler = dv_cli_tun_read_handler;
+    dv_event_set_write(tun_fd, tun_wev);
+    tun_wev->et_handler = dv_cli_tun_write_handler;
+    if (dv_event_add(tun_rev) != DV_OK) {
         fprintf(stderr, "Add event failed!\n");
         goto out;
     }
 
-    ssl_ev = dv_event_create();
-    if (ssl_ev == NULL) {
-        goto out;
-    }
-
-    ssl_ev->et_conn = &conn;
-    ssl_ev->et_conn_free = dv_cli_conn_free;
-    ssl_ev->et_handler = dv_cli_ssl_read_handler;
-    conn.cc_ev_tun = tun_ev;
-    conn.cc_ev_ssl = ssl_ev;
-    dv_event_set_read(dv_cli_sockfd, ssl_ev);
+    ssl_rev->et_conn = ssl_wev->et_conn = &conn;
+    ssl_rev->et_handler = dv_cli_ssl_read_handler;
+    dv_event_set_read(dv_cli_sockfd, ssl_rev);
+    ssl_wev->et_handler = dv_cli_ssl_write_handler;
+    dv_event_set_write(dv_cli_sockfd, ssl_wev);
     if (dv_event_add(ssl_ev) != DV_OK) {
         goto out;
     }
@@ -332,10 +306,13 @@ dv_client_process(dv_client_conf_t *conf)
     ret = DV_ERROR;
 
 out:
+    dv_cli_conn_free(&conn);
     dv_buf_free(conn.cc_wbuf);
     dv_buf_free(conn.cc_rbuf);
-    dv_event_destroy(ssl_ev);
-    dv_event_destroy(tun_ev);
+    dv_event_destroy(ssl_rev);
+    dv_event_destroy(ssl_wev);
+    dv_event_destroy(tun_rev);
+    dv_event_destroy(tun_wev);
     if (ssl != NULL) {
         suite->ps_shutdown(ssl);
         suite->ps_ssl_free(ssl);

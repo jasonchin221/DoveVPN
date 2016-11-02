@@ -142,8 +142,7 @@ dv_trans_ssl_to_tun(int tun_fd, dv_buffer_t *rbuf, size_t data_len)
 
 void
 dv_ssl_write_handler(int sock, short event, void *arg, dv_buffer_t *rbuf,
-        int tun_fd, dv_event_handler read_handler,
-        dv_event_handler write_handler)
+        int tun_fd, dv_event_handler read_handler, dv_event_t *rev)
 {
     dv_event_t              *ev = arg; 
     size_t                  ip_tlen = 0;
@@ -154,20 +153,19 @@ dv_ssl_write_handler(int sock, short event, void *arg, dv_buffer_t *rbuf,
     ip_tlen = dv_ip_datalen(rbuf->bf_head, data_len);
     ret = dv_trans_ssl_to_tun(tun_fd, rbuf, ip_tlen);
     if (ret != DV_OK) {
-        ev->et_handler = write_handler;
         if (dv_event_add(ev) != DV_OK) {
             return;
         }
         return;
     }
 
-    read_handler(sock, event, arg);
+    read_handler(sock, event, rev);
 }
 
 void
 dv_ssl_read_handler(int sock, short event, void *arg, void *ssl, int tun_fd,
         const dv_proto_suite_t *suite, dv_buffer_t *rbuf,
-        dv_event_handler write_handler, dv_ssl_err_handler err_handler)
+        dv_event_t *wev, dv_ssl_err_handler err_handler)
 {
     dv_event_t              *ev = arg; 
     int                     rlen = 0;
@@ -188,9 +186,7 @@ dv_ssl_read_handler(int sock, short event, void *arg, void *ssl, int tun_fd,
             }
             ret = dv_trans_ssl_to_tun(tun_fd, rbuf, ip_tlen);
             if (ret != DV_OK) {
-                ev->et_handler = write_handler;
-                dv_event_set_write(sock, ev);
-                if (dv_event_add(ev) != DV_OK) {
+                if (dv_event_add(wev) != DV_OK) {
                     return;
                 }
                 break;

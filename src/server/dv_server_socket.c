@@ -17,8 +17,6 @@
 #define DV_SERVER_BUF_SIZE      16384
 
 static void
-dv_srv_ssl_write(int sock, short event, void *arg);
-static void
 dv_srv_ssl_write_handshake(int sock, short event, void *arg);
 static void dv_srv_ssl_read_handler(int sock, short event, void *arg);
 
@@ -162,7 +160,7 @@ dv_srv_ssl_send_data(int sock, dv_event_t *ev, const dv_proto_suite_t *suite)
         ev->et_handler = dv_srv_ssl_read_handler;
         dv_event_set_read(sock, ev);
     } else if (ret == -DV_EWANT_WRITE) {
-        ev->et_handler = dv_srv_ssl_write;
+        ev->et_handler = dv_srv_ssl_write_handler;
         dv_event_set_write(sock, ev);
     } else {
         return DV_ERROR;
@@ -173,25 +171,6 @@ dv_srv_ssl_send_data(int sock, dv_event_t *ev, const dv_proto_suite_t *suite)
     }
 
     return DV_OK;
-}
-
-static void
-dv_srv_ssl_write(int sock, short event, void *arg)
-{
-    dv_event_t              *ev = arg; 
-    dv_sk_conn_t            *conn = ev->et_conn;
-    void                    *ssl = conn->sc_ssl;
-    const dv_proto_suite_t  *suite = dv_srv_ssl_proto_suite;
-    int                     ret = DV_OK;
-
-    printf("Write!\n");
-    ret = dv_srv_ssl_send_data(sock, ev, suite);
-    if (ret != DV_OK) {
-        suite->ps_shutdown(ssl);
-        close(sock);
-        dv_event_del(ev);
-        dv_event_destroy(ev);
-    }
 }
 
 static int

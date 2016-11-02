@@ -10,6 +10,8 @@
 #include "dv_server_socket.h"
 #include "dv_server_cycle.h"
 
+static dv_event_t *dv_srv_tun_ev;
+
 dv_tun_t dv_srv_tun = {
     .tn_fd = -1,
 };
