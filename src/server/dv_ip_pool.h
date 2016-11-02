@@ -11,6 +11,7 @@
 typedef struct _dv_subnet_ip_t {
     struct list_head    si_list_head;
     char                si_ip[DV_IP_ADDRESS_LEN];
+    void                *si_wev;
 } dv_subnet_ip_t; 
 
 typedef struct _dv_ip_pool_t {

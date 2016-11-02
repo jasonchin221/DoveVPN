@@ -44,10 +44,20 @@ dv_sk_conn_alloc(size_t buf_size)
         goto out;
     }
 
+    conn->sc_ref = 1;
+
     return conn;
 out:
     dv_sk_conn_free(conn);
     return NULL;
+}
+
+static dv_sk_conn_t *
+dv_sk_conn_get(dv_sk_conn_t *conn)
+{
+    conn->sc_ref++;
+
+    return conn;
 }
 
 void 
@@ -56,6 +66,10 @@ dv_sk_conn_free(void *conn)
     dv_sk_conn_t    *c = conn;
 
     if (c == NULL) {
+        return;
+    }
+
+    if (--c->sc_ref != 0) {
         return;
     }
 
@@ -125,12 +139,28 @@ dv_srv_ssl_write_handler(int sock, short event, void *arg)
 {
     dv_event_t              *ev = arg; 
     dv_sk_conn_t            *conn = ev->et_conn;
-    dv_buffer_t             *rbuf = conn->sc_rbuf;
-    int                     tun_fd = dv_srv_tun.tn_fd;
+    dv_buffer_t             *wbuf = conn->sc_wbuf;
+    void                    *ssl = conn->sc_ssl;
+    int                     ret = DV_OK;
 
-    dv_ssl_write_handler(sock, event, arg, rbuf, tun_fd,
-            dv_srv_ssl_read_handler,
-            dv_srv_ssl_write_handler);
+    ret = dv_buf_data_to_ssl(ssl, wbuf, suite);
+    if (ret == DV_OK) {
+        ev->et_handler = dv_srv_ssl_read_handler;
+        dv_event_set_read(sock, ev);
+        if (dv_event_add(ev) != DV_OK) {
+            goto err;
+        }
+        return;
+    } 
+    
+    if (ret == -DV_EWANT_WRITE) {
+        if (dv_event_add(ev) == DV_OK) {
+            return;
+        }
+    }
+
+err:
+    dv_event_destroy(ev);
 }
 
 static void
@@ -144,7 +174,7 @@ dv_srv_ssl_read_handler(int sock, short event, void *arg)
     int                     tun_fd = dv_srv_tun.tn_fd;
 
     dv_ssl_read_handler(sock, event, arg, ssl, tun_fd, suite, rbuf,
-        dv_srv_ssl_write_handler, dv_srv_ssl_err_handler);
+        dv_srv_ssl_err_handler);
 }
 
 static int
@@ -203,6 +233,7 @@ dv_srv_ssl_handshake_done(int sock, dv_event_t *ev, const dv_proto_suite_t *suit
     }
 
     wbuf->bf_tail += mlen;
+    ip->si_wev = conn->sc_wev;
 
     return dv_srv_ssl_send_data(sock, ev, suite);
 }
@@ -302,6 +333,31 @@ out:
     dv_event_destroy(ev);
 }
 
+static void
+dv_srv_buf_to_ssl_handler(int sock, short event, void *arg)
+{
+    dv_event_t              *ev = arg; 
+    dv_sk_conn_t            *conn = ev->et_conn;
+    dv_event_t              *rev = conn->sc_rev; 
+    dv_buffer_t             *wbuf = conn->sc_wbuf;
+    void                    *ssl = conn->sc_ssl;
+    int                     ret = DV_OK;
+
+    ret = dv_buf_data_to_ssl(ssl, wbuf, suite);
+    if (ret == DV_OK) {
+        return;
+    } 
+    
+    if (ret == -DV_EWANT_WRITE) {
+        if (dv_event_add(ev) == DV_OK) {
+            return;
+        }
+    }
+
+    dv_event_destroy(ev);
+    dv_event_del(rev);
+    dv_event_destroy(rev);
+}
 
 static void
 _dv_srv_ssl_accept(int sock, short event, void *arg, struct sockaddr *addr,
@@ -309,7 +365,8 @@ _dv_srv_ssl_accept(int sock, short event, void *arg, struct sockaddr *addr,
 {
     const dv_proto_suite_t  *suite = dv_srv_ssl_proto_suite;
     void                    *ctx = dv_srv_ssl_ctx;
-    dv_event_t              *ev = NULL; 
+    dv_event_t              *rev = NULL; 
+    dv_event_t              *wev = NULL; 
     dv_sk_conn_t            *conn = NULL;
     void                    *ssl = NULL;
     int                     accept_fd = 0;
@@ -332,14 +389,27 @@ _dv_srv_ssl_accept(int sock, short event, void *arg, struct sockaddr *addr,
     }
     /* 将连接用户的 socket 加入到 SSL */
     suite->ps_set_fd(ssl, accept_fd);
-    ev = dv_event_create();
-    if (ev == NULL) {
+    rev = dv_event_create();
+    if (rev == NULL) {
         goto out;
     }
 
     conn->sc_ssl = ssl;
-    ev->et_conn = conn;
-    ev->et_conn_free = dv_sk_conn_free;
+    conn->sc_rev = rev;
+    rev->et_conn = conn;
+    rev->et_conn_free = dv_sk_conn_free;
+    rev->et_peer_ev = &dv_srv_tun_wev;
+    wev = dv_event_create();
+    if (wev == NULL) {
+        goto out;
+    }
+
+    wev->et_conn = dv_sk_conn_get(conn);
+    wev->et_conn_free = dv_sk_conn_free;
+    wev->et_handler = dv_srv_buf_to_ssl_handler;
+    dv_event_set_write(accept_fd, wev);
+    conn->sc_wev = wev;
+
     /* 建立 SSL 连接 */
     ret = suite->ps_accept(ssl);
     switch (ret) {
@@ -351,20 +421,20 @@ _dv_srv_ssl_accept(int sock, short event, void *arg, struct sockaddr *addr,
             }
             return;
         case DV_EWANT_READ:
-            ev->et_handler = dv_srv_ssl_read_handshake;
-            dv_event_set_read(accept_fd, ev);
+            rev->et_handler = dv_srv_ssl_read_handshake;
+            dv_event_set_read(accept_fd, rev);
             break;
         case DV_EWANT_WRITE:
-            ev->et_handler = dv_srv_ssl_write_handshake;
-            dv_event_set_write(accept_fd, ev);
+            rev->et_handler = dv_srv_ssl_write_handshake;
+            dv_event_set_write(accept_fd, rev);
             break;
         default:
             goto free_ev;
     }
 
-    if (dv_event_add(ev) != DV_OK) {
+    if (dv_event_add(rev) != DV_OK) {
         close(accept_fd);
-        dv_event_destroy(ev);
+        dv_event_destroy(rev);
         return;
     }
     return;
@@ -374,8 +444,12 @@ out:
     }
 
 free_ev:
-    if (ev != NULL) {
-        dv_event_destroy(ev);
+    if (wev != NULL) {
+        dv_event_destroy(wev);
+    }
+
+    if (rev != NULL) {
+        dv_event_destroy(rev);
     }
 
     close(accept_fd);
