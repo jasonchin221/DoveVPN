@@ -1,16 +1,15 @@
 #include <unistd.h>
 
-#include "dv_server_conf.h"
-#include "dv_server_core.h"
 #include "dv_errno.h"
 #include "dv_ip_pool.h"
 #include "dv_if.h"
 #include "dv_event.h"
 #include "dv_log.h"
+#include "dv_server_conf.h"
+#include "dv_server_core.h"
 #include "dv_server_socket.h"
 #include "dv_server_cycle.h"
-
-static dv_event_t *dv_srv_tun_ev;
+#include "dv_server_tun.h"
 
 dv_tun_t dv_srv_tun = {
     .tn_fd = -1,
@@ -44,7 +43,7 @@ dv_srv_create_and_set_tun(dv_tun_t *tun, int seq, int mask, int mtu,
         goto err;
     }
 
-    return DV_OK;
+    return dv_srv_tun_ev_create(tun->tn_fd);
 err:
     dv_tun_dev_destroy(tun);
     return ret;
@@ -101,6 +100,7 @@ dv_server_cycle(dv_srv_conf_t *conf)
     ret = DV_OK;
 out:
     if (dv_srv_tun.tn_fd >= 0) {
+        dv_srv_tun_ev_destroy();
         dv_tun_dev_destroy(&dv_srv_tun);
     }
     dv_srv_exit();

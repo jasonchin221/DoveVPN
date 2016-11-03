@@ -32,7 +32,7 @@ extern int dv_event_init(void);
 extern void dv_event_exit(void);
 extern void dv_event_set(int s, dv_event_t *event, short type);
 extern void dv_event_set_read(int s, dv_event_t *event);
-extern void dv_event_set_accept_read(int s, dv_event_t *event);
+extern void dv_event_set_persist_read(int s, dv_event_t *event);
 extern void dv_event_set_write(int s, dv_event_t *event);
 extern int dv_event_add(dv_event_t *event);
 extern int dv_event_del(dv_event_t *event);

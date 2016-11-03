@@ -12,6 +12,7 @@
 #include "dv_ip_pool.h"
 #include "dv_server_cycle.h"
 #include "dv_trans.h"
+#include "dv_server_tun.h"
 
 #define DV_SERVER_LISTEN_NUM    100
 #define DV_SERVER_BUF_SIZE      16384
@@ -111,7 +112,7 @@ dv_srv_ssl_add_listenning(char *ip, dv_event_handler callback, int port)
     }
 
     ev->et_handler = callback;
-    dv_event_set_accept_read(fd, ev);
+    dv_event_set_persist_read(fd, ev);
 
     if (dv_event_add(ev) != DV_OK) {
         close(fd);
@@ -141,6 +142,7 @@ dv_srv_ssl_write_handler(int sock, short event, void *arg)
     dv_sk_conn_t            *conn = ev->et_conn;
     dv_buffer_t             *wbuf = conn->sc_wbuf;
     void                    *ssl = conn->sc_ssl;
+    const dv_proto_suite_t  *suite = dv_srv_ssl_proto_suite;
     int                     ret = DV_OK;
 
     ret = dv_buf_data_to_ssl(ssl, wbuf, suite);
@@ -341,6 +343,7 @@ dv_srv_buf_to_ssl_handler(int sock, short event, void *arg)
     dv_event_t              *rev = conn->sc_rev; 
     dv_buffer_t             *wbuf = conn->sc_wbuf;
     void                    *ssl = conn->sc_ssl;
+    const dv_proto_suite_t  *suite = dv_srv_ssl_proto_suite;
     int                     ret = DV_OK;
 
     ret = dv_buf_data_to_ssl(ssl, wbuf, suite);
@@ -414,7 +417,7 @@ _dv_srv_ssl_accept(int sock, short event, void *arg, struct sockaddr *addr,
     ret = suite->ps_accept(ssl);
     switch (ret) {
         case DV_OK:
-            ret = dv_srv_ssl_handshake_done(accept_fd, ev, suite);
+            ret = dv_srv_ssl_handshake_done(accept_fd, rev, suite);
             if (ret != DV_OK) {
                 fprintf(stderr, "Handshake done proc failed!\n");
                 goto free_ev;

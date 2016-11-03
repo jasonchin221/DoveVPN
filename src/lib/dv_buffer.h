@@ -18,5 +18,6 @@ extern dv_buffer_t *dv_buf_alloc(size_t size);
 extern void dv_buf_free(dv_buffer_t *buf);
 extern int dv_buf_data_to_ssl(void *ssl, dv_buffer_t *buf,
         const dv_proto_suite_t *suite);
+extern dv_u8 dv_buf_empty(dv_buffer_t *buf);
 
 #endif

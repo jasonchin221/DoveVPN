@@ -29,6 +29,13 @@ dv_buf_free(dv_buffer_t *buf)
     dv_free(buf);
 }
 
+dv_u8
+dv_buf_empty(dv_buffer_t *buf) 
+{
+    return (buf->bf_head == buf->bf_tail &&
+            !(buf->bf_flag & DV_BUF_FLAG_FULL));
+}
+
 int
 dv_buf_data_to_ssl(void *ssl, dv_buffer_t *buf, const dv_proto_suite_t *suite)
 {
@@ -36,7 +43,7 @@ dv_buf_data_to_ssl(void *ssl, dv_buffer_t *buf, const dv_proto_suite_t *suite)
     int                 data_len = 0;
 
     /* No data to send */
-    if (buf->bf_head == buf->bf_tail && !(buf->bf_flag & DV_BUF_FLAG_FULL)) {
+    if (dv_buf_empty(buf)) {
         return DV_OK;
     }
 
