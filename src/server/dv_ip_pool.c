@@ -173,12 +173,14 @@ dv_subnet_ip_alloc(void)
         ip = NULL;
     }
 
+    INIT_LIST_HEAD(&ip->si_list_hash);
     return ip;
 }
 
 void
 dv_subnet_ip_free(dv_subnet_ip_t *ip)
 {
+    dv_ip_hash_del(ip);
     list_add_tail(&ip->si_list_head, &dv_ip_pool.ip_list_head);
 }
 
@@ -192,3 +194,14 @@ dv_ip_pool_exit(void)
     dv_free(dv_subnet_ip_array);
     INIT_LIST_HEAD(&dv_ip_pool.ip_list_head);
 }
+
+void
+dv_ip_hash_add(dv_subnet_ip_t *ip)
+{
+}
+
+void
+dv_ip_hash_del(dv_subnet_ip_t *ip)
+{
+}
+

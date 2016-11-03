@@ -117,7 +117,7 @@ dv_trans_data_client(int tun_fd, void *ssl, dv_buffer_t *buf,
 }
 
 int
-dv_trans_ssl_to_tun(int tun_fd, dv_buffer_t *rbuf, size_t data_len)
+dv_trans_buf_to_tun(int tun_fd, dv_buffer_t *rbuf, size_t data_len)
 {
     ssize_t                 wlen = 0;
     int                     dlen = 0;
@@ -151,7 +151,7 @@ dv_ssl_write_handler(int sock, short event, void *arg, dv_buffer_t *rbuf,
 
     data_len = rbuf->bf_head - rbuf->bf_tail;
     ip_tlen = dv_ip_datalen(rbuf->bf_head, data_len);
-    ret = dv_trans_ssl_to_tun(tun_fd, rbuf, ip_tlen);
+    ret = dv_trans_buf_to_tun(tun_fd, rbuf, ip_tlen);
     if (ret != DV_OK) {
         if (dv_event_add(ev) != DV_OK) {
             return;
@@ -184,7 +184,7 @@ dv_ssl_read_handler(int sock, short event, void *arg, void *ssl, int tun_fd,
                 /* Data not long enough */
                 continue;
             }
-            ret = dv_trans_ssl_to_tun(tun_fd, rbuf, ip_tlen);
+            ret = dv_trans_buf_to_tun(tun_fd, rbuf, ip_tlen);
             if (ret != DV_OK) {
                 if (dv_event_add(ev->et_peer_ev) != DV_OK) {
                     return;

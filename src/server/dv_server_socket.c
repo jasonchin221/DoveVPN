@@ -35,13 +35,8 @@ dv_sk_conn_alloc(size_t buf_size)
         return NULL;
     }
 
-    conn->sc_rbuf = dv_buf_alloc(buf_size);
-    if (conn->sc_rbuf == NULL) {
-        goto out;
-    }
-
-    conn->sc_wbuf = dv_buf_alloc(buf_size);
-    if (conn->sc_wbuf == NULL) {
+    conn->sc_buf = dv_buf_alloc(buf_size);
+    if (conn->sc_buf == NULL) {
         goto out;
     }
 
@@ -78,12 +73,8 @@ dv_sk_conn_free(void *conn)
         dv_subnet_ip_free(c->sc_ip);
     }
 
-    if (c->sc_rbuf != NULL) {
-        dv_buf_free(c->sc_rbuf);
-    }
-
-    if (c->sc_wbuf != NULL) {
-        dv_buf_free(c->sc_wbuf);
+    if (c->sc_buf != NULL) {
+        dv_buf_free(c->sc_buf);
     }
 
     dv_free(c);
@@ -140,7 +131,7 @@ dv_srv_ssl_write_handler(int sock, short event, void *arg)
 {
     dv_event_t              *ev = arg; 
     dv_sk_conn_t            *conn = ev->et_conn;
-    dv_buffer_t             *wbuf = conn->sc_wbuf;
+    dv_buffer_t             *wbuf = conn->sc_buf;
     void                    *ssl = conn->sc_ssl;
     const dv_proto_suite_t  *suite = dv_srv_ssl_proto_suite;
     int                     ret = DV_OK;
@@ -152,6 +143,7 @@ dv_srv_ssl_write_handler(int sock, short event, void *arg)
         if (dv_event_add(ev) != DV_OK) {
             goto err;
         }
+        dv_ip_hash_add(conn->sc_ip);
         return;
     } 
     
@@ -169,10 +161,12 @@ static void
 dv_srv_ssl_read_handler(int sock, short event, void *arg)
 {
     dv_event_t              *ev = arg; 
+    dv_event_t              *peer_ev = ev->et_peer_ev; 
     dv_sk_conn_t            *conn = ev->et_conn;
+    dv_sk_conn_t            *peer_conn = peer_ev->et_conn;
     void                    *ssl = conn->sc_ssl;
     const dv_proto_suite_t  *suite = dv_srv_ssl_proto_suite;
-    dv_buffer_t             *rbuf = conn->sc_rbuf;
+    dv_buffer_t             *rbuf = peer_conn->sc_buf;
     int                     tun_fd = dv_srv_tun.tn_fd;
 
     dv_ssl_read_handler(sock, event, arg, ssl, tun_fd, suite, rbuf,
@@ -183,7 +177,7 @@ static int
 dv_srv_ssl_send_data(int sock, dv_event_t *ev, const dv_proto_suite_t *suite)
 {
     dv_sk_conn_t            *conn = ev->et_conn;
-    dv_buffer_t             *wbuf = conn->sc_wbuf;
+    dv_buffer_t             *wbuf = conn->sc_buf;
     void                    *ssl = conn->sc_ssl;
     int                     ret = DV_OK;
 
@@ -209,10 +203,11 @@ static int
 dv_srv_ssl_handshake_done(int sock, dv_event_t *ev, const dv_proto_suite_t *suite)
 {
     dv_sk_conn_t            *conn = ev->et_conn;
-    dv_buffer_t             *wbuf = conn->sc_wbuf;
+    dv_buffer_t             *wbuf = conn->sc_buf;
     void                    *ssl = conn->sc_ssl;
     dv_subnet_ip_t          *ip = NULL;
     size_t                  mlen = 0;
+    int                     ret = DV_ERROR;
 
     if (suite->ps_get_verify_result(ssl) != DV_OK) {
         fprintf(stderr, "Verify failed\n!");
@@ -237,7 +232,13 @@ dv_srv_ssl_handshake_done(int sock, dv_event_t *ev, const dv_proto_suite_t *suit
     wbuf->bf_tail += mlen;
     ip->si_wev = conn->sc_wev;
 
-    return dv_srv_ssl_send_data(sock, ev, suite);
+    ret = dv_srv_ssl_send_data(sock, ev, suite);
+    if (ret != DV_OK) {
+        return ret;
+    }
+
+    dv_ip_hash_add(ip);
+    return DV_OK;
 }
 
 static void
@@ -257,7 +258,7 @@ dv_srv_ssl_read_handshake(int sock, short event, void *arg)
     ret = suite->ps_accept(ssl);
     if (ret == DV_OK) {
         ret = dv_srv_ssl_handshake_done(sock, ev, suite);
-        if (ret != DV_OK) {
+        if (ret == DV_ERROR) {
             fprintf(stderr, "Handshake done proc failed!\n");
             goto out;
         }
@@ -304,7 +305,7 @@ dv_srv_ssl_write_handshake(int sock, short event, void *arg)
     ret = suite->ps_accept(ssl);
     if (ret == DV_OK) {
         ret = dv_srv_ssl_handshake_done(sock, ev, suite);
-        if (ret != DV_OK) {
+        if (ret == DV_ERROR) {
             fprintf(stderr, "Handshake done proc failed!\n");
             goto out;
         }
@@ -341,7 +342,7 @@ dv_srv_buf_to_ssl_handler(int sock, short event, void *arg)
     dv_event_t              *ev = arg; 
     dv_sk_conn_t            *conn = ev->et_conn;
     dv_event_t              *rev = conn->sc_rev; 
-    dv_buffer_t             *wbuf = conn->sc_wbuf;
+    dv_buffer_t             *wbuf = conn->sc_buf;
     void                    *ssl = conn->sc_ssl;
     const dv_proto_suite_t  *suite = dv_srv_ssl_proto_suite;
     int                     ret = DV_OK;
@@ -418,7 +419,7 @@ _dv_srv_ssl_accept(int sock, short event, void *arg, struct sockaddr *addr,
     switch (ret) {
         case DV_OK:
             ret = dv_srv_ssl_handshake_done(accept_fd, rev, suite);
-            if (ret != DV_OK) {
+            if (ret == DV_ERROR) {
                 fprintf(stderr, "Handshake done proc failed!\n");
                 goto free_ev;
             }

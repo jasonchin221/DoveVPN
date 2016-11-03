@@ -17,7 +17,7 @@ dv_tun_t dv_srv_tun = {
 
 static int
 dv_srv_create_and_set_tun(dv_tun_t *tun, int seq, int mask, int mtu,
-            char *subnet_ip, dv_u32 subnet_ip_size)
+            char *subnet_ip, dv_u32 subnet_ip_size, size_t tun_bsize)
 {
     dv_subnet_ip_t  *ip = NULL;
     int             ret = DV_ERROR;
@@ -43,7 +43,7 @@ dv_srv_create_and_set_tun(dv_tun_t *tun, int seq, int mask, int mtu,
         goto err;
     }
 
-    return dv_srv_tun_ev_create(tun->tn_fd);
+    return dv_srv_tun_ev_create(tun->tn_fd, tun_bsize);
 err:
     dv_tun_dev_destroy(tun);
     return ret;
@@ -61,7 +61,8 @@ dv_start_worker_processes(dv_srv_conf_t *conf, dv_u32 cpu_num)
         /* Fork process */
 
         ret = dv_srv_create_and_set_tun(tun, i, mask, conf->sc_mtu,
-            conf->sc_subnet_ip, sizeof(conf->sc_subnet_ip));
+            conf->sc_subnet_ip, sizeof(conf->sc_subnet_ip),
+            conf->sc_tun_bufsize);
         if (ret != DV_OK) {
             break;
         }

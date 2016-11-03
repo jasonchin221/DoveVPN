@@ -10,6 +10,7 @@
 
 typedef struct _dv_subnet_ip_t {
     struct list_head    si_list_head;
+    struct list_head    si_list_hash;
     char                si_ip[DV_IP_ADDRESS_LEN];
     void                *si_wev;
 } dv_subnet_ip_t; 
@@ -32,5 +33,7 @@ extern dv_subnet_ip_t *dv_subnet_ip_alloc(void);
 extern void dv_subnet_ip_free(dv_subnet_ip_t *ip);
 extern int dv_ip_pool_init(char *subnet_ip, dv_u32 len, int mask, int mtu);
 extern void dv_ip_pool_exit(void);
+extern void dv_ip_hash_add(dv_subnet_ip_t *ip);
+extern void dv_ip_hash_del(dv_subnet_ip_t *ip);
 
 #endif

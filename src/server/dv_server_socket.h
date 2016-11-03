@@ -10,8 +10,7 @@ typedef struct _dv_sk_conn_t {
     void        *sc_ip;
     void        *sc_wev;
     void        *sc_rev;
-    dv_buffer_t *sc_rbuf;
-    dv_buffer_t *sc_wbuf;
+    dv_buffer_t *sc_buf;
     dv_u32      sc_flags;
     int         sc_ref;
 } dv_sk_conn_t;

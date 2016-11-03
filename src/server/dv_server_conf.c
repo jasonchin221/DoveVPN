@@ -18,6 +18,9 @@
 #define DV_SRV_CONF_PROCESSES       "processes"
 #define DV_SRV_CONF_DAEMON          "daemon"
 #define DV_SRV_CONF_PROTO           "proto"
+#define DV_SRV_CONF_CONNECTION      "connection"
+#define DV_SRV_CONF_TUN_BUFFER_SIZE "tun_buffer_size"
+#define DV_SRV_CONF_SSL_BUFFER_SIZE "ssl_buffer_size"
 
 static dv_srv_conf_t dv_srv_conf;
 
@@ -79,6 +82,28 @@ static dv_conf_parse_t dv_srv_conf_processes[] = {
 
 #define DV_SRV_CONF_PROCESSES_ARRAY_SIZE DV_ARRAY_SIZE(dv_srv_conf_processes)
 
+static dv_conf_parse_t dv_srv_conf_connection[] = {
+    {
+        .cp_name = DV_SRV_CONF_TUN_BUFFER_SIZE,
+        .cp_len = sizeof(dv_srv_conf.sc_tun_bufsize),
+        .cp_offset = dv_offsetof(dv_srv_conf_t, sc_tun_bufsize),
+        .cp_type = json_type_int,
+        .cp_necessary = DV_TRUE,
+        .cp_parse = dv_conf_parse_int,
+    },
+    {
+        .cp_name = DV_SRV_CONF_SSL_BUFFER_SIZE,
+        .cp_len = sizeof(dv_srv_conf.sc_ssl_bufsize),
+        .cp_offset = dv_offsetof(dv_srv_conf_t, sc_ssl_bufsize),
+        .cp_type = json_type_int,
+        .cp_necessary = DV_TRUE,
+        .cp_parse = dv_conf_parse_int,
+    },
+};
+
+#define DV_SRV_CONF_CONNECTION_ARRAY_SIZE DV_ARRAY_SIZE(dv_srv_conf_connection)
+
+
 static int
 dv_srv_conf_check(dv_srv_conf_t *conf)
 {
@@ -105,6 +130,12 @@ dv_srv_conf_parse(dv_srv_conf_t *conf, char *file)
     DV_LOG(DV_LOG_NOTICE, "ip = %s, mask = %d\n", conf->sc_subnet_ip, 
             conf->sc_subnet_mask);
     ret = dv_cipher_conf_parse(&conf->sc_proto, DV_SRV_CONF_PROTO, file);
+    if (ret != DV_OK) {
+        return DV_ERROR;
+    }
+
+    ret = dv_config_parse(file, conf, DV_SRV_CONF_CONNECTION,
+        dv_srv_conf_connection, DV_SRV_CONF_CONNECTION_ARRAY_SIZE);
     if (ret != DV_OK) {
         return DV_ERROR;
     }
