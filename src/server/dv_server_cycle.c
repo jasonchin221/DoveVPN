@@ -83,6 +83,11 @@ dv_server_cycle(dv_srv_conf_t *conf)
         goto out;
     }
 
+    ret = dv_trans_init(conf->sc_mtu);
+    if (ret != DV_OK) {
+        goto out;
+    }
+
     /* Libevent */
     ret = dv_srv_ssl_socket_init(conf->sc_listen_ip, conf->sc_port);
     if (ret != DV_OK) {
@@ -104,6 +109,7 @@ out:
         dv_srv_tun_ev_destroy();
         dv_tun_dev_destroy(&dv_srv_tun);
     }
+    dv_trans_exit();
     dv_srv_exit();
     return ret;
 }

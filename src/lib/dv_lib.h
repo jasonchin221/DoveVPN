@@ -45,13 +45,21 @@ dv_ip_version4(char *ip)
     return (strstr(ip, ":") == NULL);
 }
 
+static int dv_u8
+dv_ip_is_v4(void *h)
+{
+    struct iphdr    *ip4 = h;
+
+    return ip4->version == 4;
+}
+
 static inline size_t
 dv_ip_datalen(void *h, size_t len)
 {
     struct iphdr    *ip4 = h;
     struct ip6_hdr  *ip6 = h;
 
-    if (ip4->version == 4) {
+    if (dv_ip_is_v4(ip4)) {
         if (len < sizeof(*ip4)) {
             return 0;
         }

@@ -5,6 +5,8 @@
 #include "dv_event.h"
 #include "dv_assert.h"
 #include "dv_errno.h"
+#include "dv_lib.h"
+#include "dv_trans.h"
 #include "dv_server_tun.h"
 
 dv_event_t *dv_srv_tun_rev;
@@ -13,6 +15,44 @@ dv_event_t *dv_srv_tun_wev;
 static void
 dv_srv_tun_read_handler(int sock, short event, void *arg)
 {
+    dv_trans_buf_t          *tbuf = &dv_trans_buf;
+    dv_event_t              *wev = NULL;
+    dv_buffer_t             *wbuf = NULL;
+    dv_sk_conn_t            *conn = NULL;
+    const dv_proto_suite_t  *suite = dv_srv_ssl_proto_suite;
+    struct iphdr            *ip4 = NULL;
+    struct ip6_hdr          *ip6 = NULL;
+    ssize_t                 rlen = 0;
+
+    rlen = read(sock, tbuf->tb_buf, tbuf->tb_buf_size);
+    if (rlen == 0) {
+        return;
+    }
+
+    if (rlen < 0) {
+        return;
+    }
+
+    if (dv_ip_is_v4(tbuf->tb_buf)) {
+        ip4 = (void *)tbuf->tb_buf;
+        wev = dv_ip4_wev_find((struct in_addr *)ip4->daddr);
+    } else {
+        ip6 = (void *)tbuf->tb_buf;
+        wev = dv_ip6_wev_find((struct in_addr *)ip6->ip6_dst);
+    }
+
+    if (wev == NULL) {
+        return;
+    }
+    
+    conn = wev->et_conn;
+    wbuf = conn->sc_buf;
+    ret = dv_trans_data_to_ssl(tun_fd, ssl, buf, suite, rlen);
+    if (ret == -DV_EWANT_WRITE) {
+        if (dv_event_add(wev) != DV_OK) {
+            return;
+        }
+    }
 }
 
 static void
@@ -51,6 +91,9 @@ dv_srv_tun_ev_create(int tun_fd, size_t buf_size)
 
     rev->et_handler = dv_srv_tun_read_handler;
     dv_event_set_persist_read(tun_fd, rev);
+    if (dv_event_add(rev) != DV_OK) {
+        return DV_ERROR;
+    }
 
     wev = dv_srv_tun_wev = dv_event_create();
     if (wev == NULL) {

@@ -40,12 +40,50 @@ dv_trans_exit(void)
     }
 }
 
+static void
+dv_trans_buf_info_get(dv_buffer_t *buf, int *data_len, int *space,
+        int *tail_len)
+{
+    if (buf->bf_flag & DV_BUF_FLAG_FULL) {
+        dv_assert(buf->bf_head == buf->bf_tail);
+        *tail_len = *space = 0;
+        *data_len = buf->bf_bsize;
+    } else if (buf->bf_tail >= buf->bf_head) {
+        *data_len = buf->bf_tail - buf->bf_head;
+        *space = buf->bf_bsize - *data_len;
+        *tail_len = buf->bf_buf + buf->bf_bsize - buf->bf_tail;
+    } else {
+        *tail_len = *space = buf->bf_head - buf->bf_tail;
+        *data_len = buf->bf_bsize - *space;
+    }
+}
+
+static void
+dv_trans_buf_info_set(dv_buffer_t *buf, int data_len, int tail_len)
+{
+    if (data_len <= tail_len) {
+        memcpy(buf->bf_tail, (dv_u8 *)tbuf->tb_buf + wlen, data_len);
+        buf->bf_tail += data_len;
+        if (buf->bf_tail == (buf->bf_buf + buf->bf_bsize)) {
+            buf->bf_tail = buf->bf_buf;
+        }
+    } else {
+        memcpy(buf->bf_tail, (dv_u8 *)tbuf->tb_buf + wlen, tail_len);
+        memcpy(buf->bf_buf, (dv_u8 *)tbuf->tb_buf + wlen + tail_len,
+                data_len - tail_len);
+        buf->bf_tail = buf->bf_buf + data_len - tail_len;
+    }
+
+    if (buf->bf_tail == buf->bf_head) {
+        buf->bf_flag |= DV_BUF_FLAG_FULL;
+    }
+}
+
 int
-dv_trans_data_client(int tun_fd, void *ssl, dv_buffer_t *buf,
-        const dv_proto_suite_t *suite)
+dv_trans_data_to_ssl(int tun_fd, void *ssl, dv_buffer_t *buf,
+        const dv_proto_suite_t *suite, ssize_t rlen)
 {
     dv_trans_buf_t      *tbuf = &dv_trans_buf;
-    ssize_t             rlen = 0;
     int                 space = 0;
     int                 tail_len = 0;
     int                 wlen = 0;
@@ -53,22 +91,13 @@ dv_trans_data_client(int tun_fd, void *ssl, dv_buffer_t *buf,
 
     dv_assert(tbuf->tb_buf != NULL);
 
-    if (buf->bf_flag & DV_BUF_FLAG_FULL) {
-        dv_assert(buf->bf_head == buf->bf_tail);
-        tail_len = space = 0;
-        data_len = buf->bf_bsize;
-    } else if (buf->bf_tail >= buf->bf_head) {
-        data_len = buf->bf_tail - buf->bf_head;
-        space = buf->bf_bsize - data_len;
-        tail_len = buf->bf_buf + buf->bf_bsize - buf->bf_tail;
-    } else {
-        tail_len = space = buf->bf_head - buf->bf_tail;
-        data_len = buf->bf_bsize - space;
-    }
+    dv_trans_buf_info_get(buf, &tail_len, &space, &tail_len);
 
-    rlen = read(tun_fd, tbuf->tb_buf, tbuf->tb_buf_size);
     if (rlen == 0) {
-        return -DV_EWANT_READ;
+        rlen = read(tun_fd, tbuf->tb_buf, tbuf->tb_buf_size);
+        if (rlen == 0) {
+            return -DV_EWANT_READ;
+        }
     }
 
     if (rlen < 0) {
@@ -90,30 +119,24 @@ dv_trans_data_client(int tun_fd, void *ssl, dv_buffer_t *buf,
                 wlen = 0;
             } else {
                 fprintf(stderr, "Send data failed! mlen = %d\n", (int)rlen);
+                suite->ps_shutdown(ssl);
                 return DV_ERROR;
             } 
         }
     }
 
     data_len = rlen - wlen;
-    if (data_len <= tail_len) {
-        memcpy(buf->bf_tail, (dv_u8 *)tbuf->tb_buf + wlen, data_len);
-        buf->bf_tail += data_len;
-        if (buf->bf_tail == (buf->bf_buf + buf->bf_bsize)) {
-            buf->bf_tail = buf->bf_buf;
-        }
-    } else {
-        memcpy(buf->bf_tail, (dv_u8 *)tbuf->tb_buf + wlen, tail_len);
-        memcpy(buf->bf_buf, (dv_u8 *)tbuf->tb_buf + wlen + tail_len,
-                data_len - tail_len);
-        buf->bf_tail = buf->bf_buf + data_len - tail_len;
-    }
-
-    if (buf->bf_tail == buf->bf_head) {
-        buf->bf_flag |= DV_BUF_FLAG_FULL;
-    }
+    dv_trans_buf_info_set(buf, data_len, tail_len);
 
     return -DV_EWANT_WRITE;
+}
+
+
+int
+dv_trans_data_client(int tun_fd, void *ssl, dv_buffer_t *buf,
+        const dv_proto_suite_t *suite)
+{
+    return dv_trans_data_to_ssl(tun_fd, ssl, buf, suite, 0);
 }
 
 int

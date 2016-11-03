@@ -2,6 +2,7 @@
 #define __DV_IP_POOL_H__
 
 #include <pthread.h>
+#include <netinet/in.h>
 
 #include "list.h"
 
@@ -12,6 +13,10 @@ typedef struct _dv_subnet_ip_t {
     struct list_head    si_list_head;
     struct list_head    si_list_hash;
     char                si_ip[DV_IP_ADDRESS_LEN];
+    union {
+        struct in_addr  si_addr4;
+        struct in6_addr si_addr6;
+    };
     void                *si_wev;
 } dv_subnet_ip_t; 
 
@@ -35,5 +40,7 @@ extern int dv_ip_pool_init(char *subnet_ip, dv_u32 len, int mask, int mtu);
 extern void dv_ip_pool_exit(void);
 extern void dv_ip_hash_add(dv_subnet_ip_t *ip);
 extern void dv_ip_hash_del(dv_subnet_ip_t *ip);
+extern dv_event_t *dv_ip4_wev_find(struct in_addr *addr);
+extern dv_event_t *dv_ip6_wev_find(struct in6_addr *addr);
 
 #endif

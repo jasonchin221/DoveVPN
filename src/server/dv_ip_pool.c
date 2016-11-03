@@ -205,3 +205,15 @@ dv_ip_hash_del(dv_subnet_ip_t *ip)
 {
 }
 
+dv_event_t *
+dv_ip4_wev_find(struct in_addr *addr)
+{
+    return NULL;
+}
+
+dv_event_t *
+dv_ip6_wev_find(struct in6_addr *addr)
+{
+    return NULL;
+}
+
