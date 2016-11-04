@@ -58,27 +58,6 @@ dv_trans_buf_info_get(dv_buffer_t *buf, int *data_len, int *space,
     }
 }
 
-static void
-dv_trans_buf_info_set(dv_buffer_t *buf, int data_len, int tail_len)
-{
-    if (data_len <= tail_len) {
-        memcpy(buf->bf_tail, (dv_u8 *)tbuf->tb_buf + wlen, data_len);
-        buf->bf_tail += data_len;
-        if (buf->bf_tail == (buf->bf_buf + buf->bf_bsize)) {
-            buf->bf_tail = buf->bf_buf;
-        }
-    } else {
-        memcpy(buf->bf_tail, (dv_u8 *)tbuf->tb_buf + wlen, tail_len);
-        memcpy(buf->bf_buf, (dv_u8 *)tbuf->tb_buf + wlen + tail_len,
-                data_len - tail_len);
-        buf->bf_tail = buf->bf_buf + data_len - tail_len;
-    }
-
-    if (buf->bf_tail == buf->bf_head) {
-        buf->bf_flag |= DV_BUF_FLAG_FULL;
-    }
-}
-
 int
 dv_trans_data_to_ssl(int tun_fd, void *ssl, dv_buffer_t *buf,
         const dv_proto_suite_t *suite, ssize_t rlen)
@@ -126,7 +105,22 @@ dv_trans_data_to_ssl(int tun_fd, void *ssl, dv_buffer_t *buf,
     }
 
     data_len = rlen - wlen;
-    dv_trans_buf_info_set(buf, data_len, tail_len);
+    if (data_len <= tail_len) {
+        memcpy(buf->bf_tail, (dv_u8 *)tbuf->tb_buf + wlen, data_len);
+        buf->bf_tail += data_len;
+        if (buf->bf_tail == (buf->bf_buf + buf->bf_bsize)) {
+            buf->bf_tail = buf->bf_buf;
+        }
+    } else {
+        memcpy(buf->bf_tail, (dv_u8 *)tbuf->tb_buf + wlen, tail_len);
+        memcpy(buf->bf_buf, (dv_u8 *)tbuf->tb_buf + wlen + tail_len,
+                data_len - tail_len);
+        buf->bf_tail = buf->bf_buf + data_len - tail_len;
+    }
+
+    if (buf->bf_tail == buf->bf_head) {
+        buf->bf_flag |= DV_BUF_FLAG_FULL;
+    }
 
     return -DV_EWANT_WRITE;
 }

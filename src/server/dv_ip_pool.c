@@ -7,6 +7,8 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 
+#include "jhash.h"
+
 #include "dv_types.h"
 #include "dv_log.h"
 #include "dv_assert.h"

@@ -5,6 +5,7 @@
 #include "dv_if.h"
 #include "dv_event.h"
 #include "dv_log.h"
+#include "dv_trans.h"
 #include "dv_server_conf.h"
 #include "dv_server_core.h"
 #include "dv_server_socket.h"

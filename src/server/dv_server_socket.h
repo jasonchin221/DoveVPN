@@ -15,7 +15,9 @@ typedef struct _dv_sk_conn_t {
     int         sc_ref;
 } dv_sk_conn_t;
 
+extern dv_sk_conn_t *dv_sk_conn_alloc(size_t buf_size);
 extern void dv_sk_conn_free(void *conn);
+extern dv_sk_conn_t *dv_sk_conn_get(dv_sk_conn_t *conn);
 extern int dv_srv_ssl_socket_init(char *ip, int port);
 
 

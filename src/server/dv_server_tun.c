@@ -1,4 +1,4 @@
-
+#include <unistd.h>
 
 #include "dv_types.h"
 #include "dv_tun.h"
@@ -6,8 +6,12 @@
 #include "dv_assert.h"
 #include "dv_errno.h"
 #include "dv_lib.h"
+#include "dv_ip_pool.h"
 #include "dv_trans.h"
+#include "dv_server_socket.h"
+#include "dv_server_core.h"
 #include "dv_server_tun.h"
+#include "dv_server_cycle.h"
 
 dv_event_t *dv_srv_tun_rev;
 dv_event_t *dv_srv_tun_wev;
@@ -22,7 +26,10 @@ dv_srv_tun_read_handler(int sock, short event, void *arg)
     const dv_proto_suite_t  *suite = dv_srv_ssl_proto_suite;
     struct iphdr            *ip4 = NULL;
     struct ip6_hdr          *ip6 = NULL;
+    void                    *ssl = NULL;
+    int                     tun_fd = dv_srv_tun.tn_fd;
     ssize_t                 rlen = 0;
+    int                     ret = DV_ERROR;
 
     rlen = read(sock, tbuf->tb_buf, tbuf->tb_buf_size);
     if (rlen == 0) {
@@ -35,10 +42,10 @@ dv_srv_tun_read_handler(int sock, short event, void *arg)
 
     if (dv_ip_is_v4(tbuf->tb_buf)) {
         ip4 = (void *)tbuf->tb_buf;
-        wev = dv_ip4_wev_find((struct in_addr *)ip4->daddr);
+        wev = dv_ip4_wev_find((struct in_addr *)&ip4->daddr);
     } else {
         ip6 = (void *)tbuf->tb_buf;
-        wev = dv_ip6_wev_find((struct in_addr *)ip6->ip6_dst);
+        wev = dv_ip6_wev_find((struct in6_addr *)&ip6->ip6_dst);
     }
 
     if (wev == NULL) {
@@ -47,7 +54,8 @@ dv_srv_tun_read_handler(int sock, short event, void *arg)
     
     conn = wev->et_conn;
     wbuf = conn->sc_buf;
-    ret = dv_trans_data_to_ssl(tun_fd, ssl, buf, suite, rlen);
+    ssl = conn->sc_ssl;
+    ret = dv_trans_data_to_ssl(tun_fd, ssl, wbuf, suite, rlen);
     if (ret == -DV_EWANT_WRITE) {
         if (dv_event_add(wev) != DV_OK) {
             return;
@@ -60,9 +68,10 @@ dv_srv_buf_to_tun(int sock, short event, void *arg)
 {
     dv_event_t              *ev = arg; 
     dv_sk_conn_t            *conn = ev->et_conn;
-    dv_buffer_t             wbuf = conn->sc_buf;
+    dv_buffer_t             *wbuf = conn->sc_buf;
     size_t                  ip_tlen = 0;
     int                     data_len = 0;
+    int                     tun_fd = dv_srv_tun.tn_fd;
     int                     ret = DV_ERROR;
 
     data_len = wbuf->bf_head - wbuf->bf_tail;

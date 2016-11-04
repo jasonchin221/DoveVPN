@@ -45,7 +45,7 @@ dv_ip_version4(char *ip)
     return (strstr(ip, ":") == NULL);
 }
 
-static int dv_u8
+static inline dv_u8
 dv_ip_is_v4(void *h)
 {
     struct iphdr    *ip4 = h;

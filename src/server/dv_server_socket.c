@@ -48,7 +48,7 @@ out:
     return NULL;
 }
 
-static dv_sk_conn_t *
+dv_sk_conn_t *
 dv_sk_conn_get(dv_sk_conn_t *conn)
 {
     conn->sc_ref++;

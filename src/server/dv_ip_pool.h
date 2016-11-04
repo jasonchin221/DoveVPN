@@ -8,6 +8,7 @@
 
 #include "dv_conf.h"
 #include "dv_types.h"
+#include "dv_event.h"
 
 typedef struct _dv_subnet_ip_t {
     struct list_head    si_list_head;
