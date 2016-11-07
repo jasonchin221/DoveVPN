@@ -92,18 +92,20 @@ dv_server_cycle(dv_srv_conf_t *conf)
     /* Libevent */
     ret = dv_srv_ssl_socket_init(conf->sc_listen_ip, conf->sc_port);
     if (ret != DV_OK) {
+        DV_LOG(DV_LOG_INFO, "Init ssl socket failed!\n");
         goto out;
     }
 
     ret = dv_start_worker_processes(conf, dv_ncpu);
     if (ret != DV_OK) {
+        DV_LOG(DV_LOG_INFO, "Start worker processes failed!\n");
         goto out;
     }
 
     /* Event loop */
-    printf("Before loop\n");
+    DV_LOG(DV_LOG_INFO, "Before loop\n");
     ret = dv_process_events();
-    printf("After loop, ret = %d\n", ret);
+    DV_LOG(DV_LOG_INFO, "After loop, ret = %d\n", ret);
     ret = DV_OK;
 out:
     if (dv_srv_tun.tn_fd >= 0) {

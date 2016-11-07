@@ -10,10 +10,16 @@
 
 #else
 #include <syslog.h>
+extern int dv_log_print;
 #define DV_LOG(priority, format, ...) \
     do { \
-        syslog(priority, "[%s, %d]: "format, __FUNCTION__, \
-                __LINE__, ##__VA_ARGS__); \
+        if (dv_log_print) { \
+            printf("[%s, %d]: "fmt, __FUNCTION__, \
+                    __LINE__, ##__VA_ARGS__); \
+        } else { \
+            syslog(priority, "[%s, %d]: "format, __FUNCTION__, \
+                    __LINE__, ##__VA_ARGS__); \
+        } \
     } while (0)
 
 #endif

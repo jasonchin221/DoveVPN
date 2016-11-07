@@ -31,6 +31,7 @@ dv_srv_init(dv_srv_conf_t *conf)
 
     dv_ncpu = dv_get_cpu_num();
     if (dv_ncpu == 0) {
+        DV_LOG(DV_LOG_INFO, "Get cpu num failed!\n");
         goto out;
     }
 

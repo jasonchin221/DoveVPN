@@ -476,11 +476,13 @@ dv_srv_ssl_socket_init(char *ip, int port)
 
     ret = dv_event_init();
     if (ret != DV_OK) {
+        DV_LOG(DV_LOG_INFO, "Event init failed!\n");
         return ret;
     }
 
     ev = dv_srv_ssl_add_listenning(ip, dv_srv_ssl_accept, port);
     if (ev == NULL) {
+        DV_LOG(DV_LOG_INFO, "Add listenning failed!\n");
         dv_event_exit();
         return DV_ERROR;
     }

@@ -16,6 +16,7 @@
 #include "dv_types.h"
 #include "dv_errno.h"
 #include "dv_lib.h"
+#include "dv_log.h"
 #include "dv_proto.h"
 #include "dv_server_conf.h"
 #include "dv_server_cycle.h"
@@ -26,7 +27,7 @@ dv_program_version = "1.0.0";//PACKAGE_STRING;
 static const struct option 
 dv_long_opts[] = {
 	{"help", 0, 0, 'H'},
-	{"daemonize", 0, 0, 'd'},
+	{"debug", 0, 0, 'd'},
 	{"config", 0, 0, 'c'},
 	{0, 0, 0, 0}
 };
@@ -34,6 +35,7 @@ dv_long_opts[] = {
 static const char *
 dv_options[] = {
 	"--config       -c	configure file\n",	
+	"--debug        -d	debug mode\n",	
 	"--help         -H	Print help information\n",	
 };
 
@@ -51,7 +53,7 @@ dv_help(void)
 }
 
 static const char *
-dv_optstring = "Hc:";
+dv_optstring = "Hdc:";
 
 int
 main(int argc, char **argv)  
@@ -70,6 +72,10 @@ main(int argc, char **argv)
 
             case 'c':
                 cf = optarg;
+                break;
+
+            case 'd':
+                dv_log_debug = 1;
                 break;
 
             default:

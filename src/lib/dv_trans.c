@@ -9,6 +9,7 @@
 #include "dv_trans.h"
 #include "dv_assert.h"
 #include "dv_lib.h"
+#include "dv_log.h"
 
 #define DV_IP_HEADER_MIN_LEN    20
 
@@ -18,11 +19,13 @@ int
 dv_trans_init(size_t buf_size)
 {
     if (dv_trans_buf.tb_buf != NULL) {
+        DV_LOG(DV_LOG_INFO, "Trans buf already init!\n");
         return DV_ERROR;
     }
 
     dv_trans_buf.tb_buf = dv_malloc(buf_size);
     if (dv_trans_buf.tb_buf == NULL) {
+        DV_LOG(DV_LOG_INFO, "Alloc buf failed!\n");
         return DV_ERROR;
     }
 

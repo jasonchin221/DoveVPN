@@ -2,6 +2,8 @@
 #include "dv_types.h"
 #include "dv_log.h"
 
+int dv_log_print;
+
 void
 dv_log_init(const char *logname)
 {
