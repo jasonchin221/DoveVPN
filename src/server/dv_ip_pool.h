@@ -17,11 +17,20 @@ typedef struct _dv_subnet_ip_t {
     union {
         struct in_addr  si_addr4;
         struct in6_addr si_addr6;
-    };
+    } si_addr;
+    size_t              si_addr_len;
     void                *si_wev;
 } dv_subnet_ip_t; 
 
+typedef struct _dv_ip_hash_t {
+    dv_u32              ih_size;
+    dv_u32              ih_num;
+    struct list_head    ih_table[0];
+} dv_ip_hash_t;
+
 typedef struct _dv_ip_pool_t {
+    dv_ip_hash_t        *ip_hash_table;
+    dv_subnet_ip_t      *ip_array; 
     struct list_head    ip_list_head;
     int                 ip_mask;
     int                 ip_mtu;
@@ -41,7 +50,6 @@ extern int dv_ip_pool_init(char *subnet_ip, dv_u32 len, int mask, int mtu);
 extern void dv_ip_pool_exit(void);
 extern void dv_ip_hash_add(dv_subnet_ip_t *ip);
 extern void dv_ip_hash_del(dv_subnet_ip_t *ip);
-extern dv_event_t *dv_ip4_wev_find(struct in_addr *addr);
-extern dv_event_t *dv_ip6_wev_find(struct in6_addr *addr);
+extern dv_event_t *dv_ip_wev_find(void *ip, size_t len);
 
 #endif

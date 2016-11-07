@@ -10,6 +10,7 @@
 #define DV_SRV_LOG_NAME     "DoveVPN-Server"
 
 dv_u32 dv_ncpu;
+dv_u32 dv_srv_conn_max = 200000;
 const dv_proto_suite_t *dv_srv_ssl_proto_suite;
 void *dv_srv_ssl_ctx;
 

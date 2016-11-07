@@ -42,10 +42,10 @@ dv_srv_tun_read_handler(int sock, short event, void *arg)
 
     if (dv_ip_is_v4(tbuf->tb_buf)) {
         ip4 = (void *)tbuf->tb_buf;
-        wev = dv_ip4_wev_find((struct in_addr *)&ip4->daddr);
+        wev = dv_ip_wev_find(&ip4->daddr, sizeof(ip4->daddr));
     } else {
         ip6 = (void *)tbuf->tb_buf;
-        wev = dv_ip6_wev_find((struct in6_addr *)&ip6->ip6_dst);
+        wev = dv_ip_wev_find(&ip6->ip6_dst, sizeof(ip6->ip6_dst));
     }
 
     if (wev == NULL) {
