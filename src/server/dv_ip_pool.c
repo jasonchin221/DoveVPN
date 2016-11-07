@@ -24,10 +24,12 @@ static dv_ip_pool_t dv_ip_pool;
 
 static dv_u32 dv_get_ipv4_num(int mask);
 static int dv_gen_ipv4(char *ip, dv_u32 len, char *subnet,
-        int subnet_mask, dv_u32 seq);
+        int subnet_mask, dv_u32 seq,
+        void *addr, size_t *addr_len);
 static dv_u32 dv_get_ipv6_num(int mask);
 static int dv_gen_ipv6(char *ip, dv_u32 len, char *subnet,
-        int subnet_mask, dv_u32 seq);
+        int subnet_mask, dv_u32 seq,
+        void *addr, size_t *addr_len);
 
 static dv_pool_create_t dv_ipv4_pool_create = {
     .pc_get_ip_num = dv_get_ipv4_num,
@@ -51,7 +53,8 @@ dv_get_ipv4_num(int mask)
 }
 
 static int
-dv_gen_ipv4(char *ip, dv_u32 len, char *subnet, int subnet_mask, dv_u32 seq)
+dv_gen_ipv4(char *ip, dv_u32 len, char *subnet, int subnet_mask, dv_u32 seq,
+        void *in_addr, size_t *addr_len)
 {
     struct in_addr  str_ip = {};
     dv_u32          addr = 0;
@@ -67,6 +70,8 @@ dv_gen_ipv4(char *ip, dv_u32 len, char *subnet, int subnet_mask, dv_u32 seq)
     addr += seq;
     addr = htonl(addr);
     memcpy(&str_ip, &addr, sizeof(addr));
+    memcpy(in_addr, &addr, sizeof(addr));
+    *addr_len = sizeof(addr);
     snprintf(ip, len, "%s", inet_ntoa(str_ip));
 
     return DV_OK;
@@ -79,7 +84,8 @@ dv_get_ipv6_num(int mask)
 }
 
 static int
-dv_gen_ipv6(char *ip, dv_u32 len, char *subnet, int subnet_mask, dv_u32 seq)
+dv_gen_ipv6(char *ip, dv_u32 len, char *subnet, int subnet_mask, dv_u32 seq,
+        void *addr, size_t *addr_len)
 {
     return DV_ERROR;
 }
@@ -159,7 +165,8 @@ _dv_ip_pool_init(dv_ip_pool_t *pool, char *subnet_ip, dv_u32 len, int mask, int 
             continue;
         }
         ret = create->pc_gen_ip(ip_array->si_ip, sizeof(ip_array->si_ip),
-                subnet_ip, mask, i);
+                subnet_ip, mask, i, &ip_array->si_addr,
+                &ip_array->si_addr_len);
         if (ret != DV_OK) {
             goto out;
         }
@@ -182,7 +189,7 @@ _dv_ip_pool_init(dv_ip_pool_t *pool, char *subnet_ip, dv_u32 len, int mask, int 
 
 out:
     if (ip_array != NULL) {
-        dv_free(p_array);
+        dv_free(ip_array);
     }
 
     DV_LOG(DV_LOG_NOTICE, "Init ip pool failed!\n");
@@ -192,14 +199,8 @@ out:
 int
 dv_ip_pool_init(char *subnet_ip, dv_u32 len, int mask, int mtu)
 {
-
-    dv_subnet_ip_t      *ip_array; 
     dv_ip_pool_t        *pool = NULL;
     dv_pool_create_t    *create = NULL;
-    dv_u32              total_size = 0;
-    dv_u32              i = 0;
-    dv_u32              total_num = 0;
-    int                 ret = DV_ERROR;
 
     pool = &dv_ip_pool;
     dv_assert(pool->ip_array == NULL);
@@ -210,7 +211,7 @@ dv_ip_pool_init(char *subnet_ip, dv_u32 len, int mask, int mtu)
         create = &dv_ipv6_pool_create;
     }
 
-    return _dv_ip_pool_init(subnet_ip, len, mask, mtu, create);
+    return _dv_ip_pool_init(pool, subnet_ip, len, mask, mtu, create);
 }
 
 dv_subnet_ip_t *
@@ -247,7 +248,7 @@ _dv_ip_pool_exit(dv_ip_pool_t *pool)
 
     dv_ip_hash_exit(&pool->ip_hash_table);
     dv_free(pool->ip_array);
-    INIT_LIST_HEAD(&ip_pool->ip_list_head);
+    INIT_LIST_HEAD(&pool->ip_list_head);
 }
 
 void
@@ -259,12 +260,22 @@ dv_ip_pool_exit(void)
 static dv_u32
 dv_ip_hash_get(const void *key, dv_u32 length)
 {
-    return jhash(key, 0) % dv_ip_hash_table->ih_size;
+    return jhash(key, length, 0) % dv_ip_pool.ip_hash_table->ih_size;
 }
 
 void
 dv_ip_hash_add(dv_subnet_ip_t *ip)
 {
+    dv_ip_hash_t        *table = NULL;
+    struct list_head    *head = NULL;
+    dv_u32              hash = 0;
+
+    table = dv_ip_pool.ip_hash_table;
+    dv_assert(table != NULL);
+
+    hash = dv_ip_hash_get(&ip->si_addr, ip->si_addr_len);
+    head = &table->ih_table[hash];
+    list_add(&ip->si_list_hash, head);
 }
 
 void
@@ -279,7 +290,7 @@ dv_ip_hash_find(dv_ip_pool_t *pool, const void *key, size_t length)
     dv_ip_hash_t        *table = NULL;
     struct list_head    *head = NULL;
     struct list_head    *pos = NULL;
-    dv_subnet_ip_t      ip = NULL;
+    dv_subnet_ip_t      *ip = NULL;
     dv_u32              hash = 0;
 
     table = pool->ip_hash_table;
