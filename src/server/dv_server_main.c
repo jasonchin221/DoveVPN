@@ -75,7 +75,7 @@ main(int argc, char **argv)
                 break;
 
             case 'd':
-                dv_log_debug = 1;
+                dv_log_print = 1;
                 break;
 
             default:

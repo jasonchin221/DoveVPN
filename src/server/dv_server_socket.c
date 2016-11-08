@@ -12,6 +12,7 @@
 #include "dv_ip_pool.h"
 #include "dv_server_cycle.h"
 #include "dv_trans.h"
+#include "dv_log.h"
 #include "dv_server_tun.h"
 
 #define DV_SERVER_LISTEN_NUM    100
