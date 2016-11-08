@@ -90,6 +90,7 @@ dv_event_add(dv_event_t *event)
 
     err = event_add(event->et_ev, event->et_timeout);
     if (err < 0) {
+        DV_LOG(DV_LOG_INFO, "Event add failed!\n");
         return DV_ERROR;
     }
 

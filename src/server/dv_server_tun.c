@@ -53,6 +53,10 @@ dv_srv_tun_read_handler(int sock, short event, void *arg)
     }
     
     conn = wev->et_conn;
+    if (conn->sc_flags & DV_SK_CONN_FLAG_HANDSHAKED) {
+        return;
+    }
+
     wbuf = conn->sc_buf;
     ssl = conn->sc_ssl;
     ret = dv_trans_data_to_ssl(tun_fd, ssl, wbuf, suite, rlen);

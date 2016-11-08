@@ -100,6 +100,7 @@ dv_cli_ssl_reconnect(int sock, dv_event_t *ev, const dv_proto_suite_t *suite)
     dv_cli_conn_t       *conn = ev->et_conn;
     dv_client_conf_t    *conf = conn->cc_conf;
 
+    DV_LOG(DV_LOG_INFO, "Client reconnect!\n");
     while (1) {
         conn->cc_ssl = dv_cli_ssl_recreate(conf, suite, conn->cc_ssl);
         if (conn->cc_ssl != NULL) {
@@ -131,12 +132,10 @@ dv_cli_tun_to_ssl(int sock, short event, void *arg)
                 continue;
             case -DV_EWANT_READ:
                 if (dv_event_add(ev) != DV_OK) {
-                    return;
                 }
                 return;
             case -DV_EWANT_WRITE:
                 if (dv_event_add(ev->et_peer_ev) != DV_OK) {
-                    return;
                 }
                 break;
             case -DV_ETUN:
@@ -144,9 +143,6 @@ dv_cli_tun_to_ssl(int sock, short event, void *arg)
                 break;
             default:
                 dv_cli_ssl_reconnect(sock, ev, suite);
-                if (dv_event_add(ev) != DV_OK) {
-                    return;
-                }
                 break;
         }
     }
