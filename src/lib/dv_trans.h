@@ -26,6 +26,7 @@ extern int dv_trans_buf_to_tun(int tun_fd, dv_buffer_t *rbuf, size_t data_len);
 extern int dv_trans_init(size_t buf_size);
 extern void dv_trans_exit(void);
 extern int dv_trans_data_to_ssl(int tun_fd, void *ssl, dv_buffer_t *buf,
-        const dv_proto_suite_t *suite, ssize_t rlen);
+        const dv_proto_suite_t *suite, dv_trans_buf_t *tbuf,
+        ssize_t rlen);
 
 #endif

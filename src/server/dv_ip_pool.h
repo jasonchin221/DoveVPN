@@ -18,13 +18,13 @@ typedef struct _dv_subnet_ip_t {
         struct in_addr  si_addr4;
         struct in6_addr si_addr6;
     } si_addr;
-    size_t              si_addr_len;
     void                *si_wev;
 } dv_subnet_ip_t; 
 
 typedef struct _dv_ip_hash_t {
     dv_u32              ih_size;
     dv_u32              ih_num;
+    size_t              ih_key_len;
     struct list_head    ih_table[0];
 } dv_ip_hash_t;
 
@@ -39,8 +39,7 @@ typedef struct _dv_ip_pool_t {
 typedef struct _dv_pool_create_t {
     dv_u32      (*pc_get_ip_num)(int mask);
     int         (*pc_gen_ip)(char *ip, dv_u32 len, char *subnet,
-                    int subnet_mask, dv_u32 seq,
-                    void *addr, size_t *addr_len);
+                    int subnet_mask, dv_u32 seq, void *addr);
 } dv_pool_create_t; 
 
 

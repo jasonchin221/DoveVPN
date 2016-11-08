@@ -126,7 +126,8 @@ dv_cli_tun_to_ssl(int sock, short event, void *arg)
     int                     ret = DV_ERROR;
 
     while (1) {
-        ret = dv_trans_data_to_ssl(tun_fd, ssl, conn->cc_wbuf, suite, 0);
+        ret = dv_trans_data_to_ssl(tun_fd, ssl, conn->cc_wbuf,
+                suite, &dv_trans_buf, 0);
         switch (ret) {
             case DV_OK:
                 continue;

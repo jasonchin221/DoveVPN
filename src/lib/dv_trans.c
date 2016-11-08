@@ -63,9 +63,9 @@ dv_trans_buf_info_get(dv_buffer_t *buf, int *data_len, int *space,
 
 int
 dv_trans_data_to_ssl(int tun_fd, void *ssl, dv_buffer_t *buf,
-        const dv_proto_suite_t *suite, ssize_t rlen)
+        const dv_proto_suite_t *suite, dv_trans_buf_t *tbuf,
+        ssize_t rlen)
 {
-    dv_trans_buf_t      *tbuf = &dv_trans_buf;
     int                 space = 0;
     int                 tail_len = 0;
     int                 wlen = 0;
@@ -199,6 +199,7 @@ dv_ssl_read_handler(int sock, short event, void *arg, void *ssl, int tun_fd,
             ret = dv_trans_buf_to_tun(tun_fd, rbuf, ip_tlen);
             if (ret != DV_OK) {
                 if (dv_event_add(ev->et_peer_ev) != DV_OK) {
+                    DV_LOG(DV_LOG_INFO, "Add peer event failed\n!");
                     return;
                 }
                 break;
@@ -207,6 +208,7 @@ dv_ssl_read_handler(int sock, short event, void *arg, void *ssl, int tun_fd,
 
         if (rlen == -DV_EWANT_READ) {
             if (dv_event_add(ev) != DV_OK) {
+                DV_LOG(DV_LOG_INFO, "Add write event failed\n!");
                 return;
             }
             break;

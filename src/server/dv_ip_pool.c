@@ -24,12 +24,10 @@ static dv_ip_pool_t dv_ip_pool;
 
 static dv_u32 dv_get_ipv4_num(int mask);
 static int dv_gen_ipv4(char *ip, dv_u32 len, char *subnet,
-        int subnet_mask, dv_u32 seq,
-        void *addr, size_t *addr_len);
+        int subnet_mask, dv_u32 seq, void *addr);
 static dv_u32 dv_get_ipv6_num(int mask);
 static int dv_gen_ipv6(char *ip, dv_u32 len, char *subnet,
-        int subnet_mask, dv_u32 seq,
-        void *addr, size_t *addr_len);
+        int subnet_mask, dv_u32 seq, void *addr);
 
 static dv_pool_create_t dv_ipv4_pool_create = {
     .pc_get_ip_num = dv_get_ipv4_num,
@@ -54,7 +52,7 @@ dv_get_ipv4_num(int mask)
 
 static int
 dv_gen_ipv4(char *ip, dv_u32 len, char *subnet, int subnet_mask, dv_u32 seq,
-        void *in_addr, size_t *addr_len)
+        void *in_addr)
 {
     struct in_addr  str_ip = {};
     dv_u32          addr = 0;
@@ -71,7 +69,6 @@ dv_gen_ipv4(char *ip, dv_u32 len, char *subnet, int subnet_mask, dv_u32 seq,
     addr = htonl(addr);
     memcpy(&str_ip, &addr, sizeof(addr));
     memcpy(in_addr, &addr, sizeof(addr));
-    *addr_len = sizeof(addr);
     snprintf(ip, len, "%s", inet_ntoa(str_ip));
 
     return DV_OK;
@@ -85,7 +82,7 @@ dv_get_ipv6_num(int mask)
 
 static int
 dv_gen_ipv6(char *ip, dv_u32 len, char *subnet, int subnet_mask, dv_u32 seq,
-        void *addr, size_t *addr_len)
+        void *addr)
 {
     return DV_ERROR;
 }
@@ -103,7 +100,7 @@ dv_get_subnet_mtu(void)
 }
 
 static dv_ip_hash_t *
-dv_ip_hash_init(dv_u32 size)
+dv_ip_hash_init(dv_u32 size, size_t key_len)
 {
     dv_ip_hash_t    *table = NULL;
     dv_u32          i = 0;
@@ -118,6 +115,7 @@ dv_ip_hash_init(dv_u32 size)
     }
 
     table->ih_size = size;
+    table->ih_key_len = key_len;
     table->ih_num = 0;
 
     return table;
@@ -136,7 +134,7 @@ dv_ip_hash_exit(dv_ip_hash_t **table)
 
 static int
 _dv_ip_pool_init(dv_ip_pool_t *pool, char *subnet_ip, dv_u32 len, int mask, int mtu,
-        dv_pool_create_t *create)
+        dv_pool_create_t *create, size_t addr_len)
 {
     dv_subnet_ip_t      *ip_array = NULL; 
     dv_u32              total_size = 0;
@@ -165,8 +163,7 @@ _dv_ip_pool_init(dv_ip_pool_t *pool, char *subnet_ip, dv_u32 len, int mask, int 
             continue;
         }
         ret = create->pc_gen_ip(ip_array->si_ip, sizeof(ip_array->si_ip),
-                subnet_ip, mask, i, &ip_array->si_addr,
-                &ip_array->si_addr_len);
+                subnet_ip, mask, i, &ip_array->si_addr);
         if (ret != DV_OK) {
             goto out;
         }
@@ -179,7 +176,7 @@ _dv_ip_pool_init(dv_ip_pool_t *pool, char *subnet_ip, dv_u32 len, int mask, int 
     DV_LOG(DV_LOG_NOTICE, "Alloc ip pool(%d MB) OK!\n", 
             total_size/1000000);
 
-    pool->ip_hash_table = dv_ip_hash_init(dv_srv_conn_max);
+    pool->ip_hash_table = dv_ip_hash_init(dv_srv_conn_max, addr_len);
     if (pool->ip_hash_table == NULL) {
         goto out;
     }
@@ -201,17 +198,20 @@ dv_ip_pool_init(char *subnet_ip, dv_u32 len, int mask, int mtu)
 {
     dv_ip_pool_t        *pool = NULL;
     dv_pool_create_t    *create = NULL;
+    size_t              key_len = 0;
 
     pool = &dv_ip_pool;
     dv_assert(pool->ip_array == NULL);
 
     if (dv_ip_version4(subnet_ip)) {
         create = &dv_ipv4_pool_create;
+        key_len = sizeof(struct in_addr);
     } else {
         create = &dv_ipv6_pool_create;
+        key_len = sizeof(struct in6_addr);
     }
 
-    return _dv_ip_pool_init(pool, subnet_ip, len, mask, mtu, create);
+    return _dv_ip_pool_init(pool, subnet_ip, len, mask, mtu, create, key_len);
 }
 
 dv_subnet_ip_t *
@@ -273,19 +273,23 @@ dv_ip_hash_add(dv_subnet_ip_t *ip)
     table = dv_ip_pool.ip_hash_table;
     dv_assert(table != NULL);
 
-    hash = dv_ip_hash_get(&ip->si_addr, ip->si_addr_len);
+    hash = dv_ip_hash_get(&ip->si_addr, table->ih_key_len);
     head = &table->ih_table[hash];
     list_add(&ip->si_list_hash, head);
+    table->ih_num++;
 }
 
 void
 dv_ip_hash_del(dv_subnet_ip_t *ip)
 {
+    dv_assert(dv_ip_pool.ip_hash_table != NULL);
+
     list_del(&ip->si_list_hash);
+    dv_ip_pool.ip_hash_table->ih_num--;
 }
 
 static dv_subnet_ip_t *
-dv_ip_hash_find(dv_ip_pool_t *pool, const void *key, size_t length)
+dv_ip_hash_find(dv_ip_pool_t *pool, const void *key, size_t len)
 {
     dv_ip_hash_t        *table = NULL;
     struct list_head    *head = NULL;
@@ -295,14 +299,22 @@ dv_ip_hash_find(dv_ip_pool_t *pool, const void *key, size_t length)
 
     table = pool->ip_hash_table;
     if (table == NULL) {
+        DV_LOG(DV_LOG_INFO, "Table is NULL!\n");
         return NULL;
     }
-    hash = dv_ip_hash_get(key, length);
+
+    if (len != table->ih_key_len) {
+        DV_LOG(DV_LOG_INFO, "Key len(%zu) not match(%zu)\n",
+                len, table->ih_key_len);
+        return NULL;
+    }
+
+    hash = dv_ip_hash_get(key, len);
     head = &table->ih_table[hash];
 
     list_for_each_prev(pos, head) {
         ip = dv_container_of(pos, dv_subnet_ip_t, si_list_hash);
-        if (memcmp(key, &ip->si_addr, length) == 0) {
+        if (memcmp(key, &ip->si_addr, len) == 0) {
             return ip;
         }
     }

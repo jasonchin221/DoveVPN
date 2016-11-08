@@ -58,7 +58,9 @@ dv_sk_conn_get(dv_sk_conn_t *conn)
 void 
 dv_sk_conn_free(void *conn)
 {
-    dv_sk_conn_t    *c = conn;
+    dv_sk_conn_t            *c = conn;
+    void                    *ssl = c->sc_ssl;
+    const dv_proto_suite_t  *suite = dv_srv_ssl_proto_suite;
 
     if (c == NULL) {
         return;
@@ -74,6 +76,11 @@ dv_sk_conn_free(void *conn)
 
     if (c->sc_buf != NULL) {
         dv_buf_free(c->sc_buf);
+    }
+
+    if (c->sc_ssl != NULL) {
+        suite->ps_shutdown(ssl);
+        suite->ps_ssl_free(ssl);
     }
 
     dv_free(c);
@@ -120,12 +127,12 @@ static void
 dv_srv_ssl_err_handler(int sock, dv_event_t *ev, const dv_proto_suite_t *suite)
 {
     dv_sk_conn_t            *conn = ev->et_conn;
-    void                    *ssl = conn->sc_ssl;
+    dv_event_t              *wev = conn->sc_wev;
 
-    suite->ps_shutdown(ssl);
-    suite->ps_ssl_free(ssl);
     close(sock);
     dv_event_destroy(ev);
+    dv_event_del(wev);
+    dv_event_destroy(wev);
 }
 
 static void
@@ -158,6 +165,7 @@ dv_srv_ssl_send_data(int sock, dv_event_t *ev, const dv_proto_suite_t *suite)
     ret = dv_buf_data_to_ssl(ssl, wbuf, suite);
     if (ret == DV_OK) {
         if (dv_event_add(ev) != DV_OK) {
+            DV_LOG(DV_LOG_INFO, "Add read event failed!\n");
             return DV_ERROR;
         }
         return DV_OK;
@@ -165,15 +173,18 @@ dv_srv_ssl_send_data(int sock, dv_event_t *ev, const dv_proto_suite_t *suite)
     
     if (ret == -DV_EWANT_WRITE) {
         if (dv_event_add(ev) != DV_OK) {
+            DV_LOG(DV_LOG_INFO, "Add read event failed!\n");
             return DV_ERROR;
         }
  
         if (dv_event_add(wev) != DV_OK) {
+            DV_LOG(DV_LOG_INFO, "Add write event failed!\n");
             return DV_ERROR;
         }
         return DV_OK;
     }
  
+    DV_LOG(DV_LOG_INFO, "Unknown return value %d!\n", ret);
     return DV_ERROR;
 }
 
@@ -188,13 +199,13 @@ dv_srv_ssl_handshake_done(int sock, dv_event_t *ev, const dv_proto_suite_t *suit
     int                     ret = DV_ERROR;
 
     if (suite->ps_get_verify_result(ssl) != DV_OK) {
-        DV_LOG(DV_LOG_INFO, "Verify failed\n!");
+        DV_LOG(DV_LOG_INFO, "Verify failed!\n");
         return DV_ERROR;
     }
 
     ip = dv_subnet_ip_alloc();
     if (ip == NULL) {
-        DV_LOG(DV_LOG_INFO, "Alloc ip failed\n!");
+        DV_LOG(DV_LOG_INFO, "Alloc ip failed!\n");
         return DV_ERROR;
     }
 
@@ -203,7 +214,7 @@ dv_srv_ssl_handshake_done(int sock, dv_event_t *ev, const dv_proto_suite_t *suit
     mlen = dv_msg_ipalloc_build(wbuf->bf_head, wbuf->bf_bsize,
             ip->si_ip, strlen(ip->si_ip), dv_get_subnet_mask());
     if (mlen == 0) {
-        DV_LOG(DV_LOG_INFO, "Build ipalloc msg failed\n!");
+        DV_LOG(DV_LOG_INFO, "Build ipalloc msg failed!\n");
         return DV_ERROR;
     }
 
@@ -272,7 +283,7 @@ out:
 }
 
 static void
-dv_srv_buf_to_ssl_handler(int sock, short event, void *arg)
+dv_srv_buf_to_ssl(int sock, short event, void *arg)
 {
     dv_event_t              *ev = arg; 
     dv_sk_conn_t            *conn = ev->et_conn;
@@ -351,7 +362,7 @@ _dv_srv_ssl_accept(int sock, short event, void *arg, struct sockaddr *addr,
 
     wev->et_conn = dv_sk_conn_get(conn);
     wev->et_conn_free = dv_sk_conn_free;
-    wev->et_handler = dv_srv_buf_to_ssl_handler;
+    wev->et_handler = dv_srv_buf_to_ssl;
     dv_event_set_write(accept_fd, wev);
     conn->sc_wev = wev;
 
