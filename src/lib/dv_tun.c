@@ -44,15 +44,16 @@ dv_tun_dev_create(dv_tun_t *tun, int i)
     return DV_OK;
 }
 
-void
+int
 dv_tun_dev_destroy(dv_tun_t *tun)
 {
     if (ioctl(tun->tn_fd, TUNSETPERSIST, 0) < 0) {
         DV_LOG(DV_LOG_EMERG, "Disabling TUNSETPERSIST\n");
-        exit(1);
+        return DV_ERROR;
     }
 
     close(tun->tn_fd);
+    return DV_OK;
 }
 
 int
