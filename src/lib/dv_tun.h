@@ -12,7 +12,7 @@ typedef struct _dv_tun_t {
 } dv_tun_t;
 
 extern int dv_tun_dev_create(dv_tun_t *tun, int i);
-extern void dv_tun_dev_destroy(dv_tun_t *tun);
+extern int dv_tun_dev_destroy(dv_tun_t *tun);
 extern int dv_tun_init(dv_tun_t *tun);
 extern void dv_tun_exit(dv_tun_t *tun);
 

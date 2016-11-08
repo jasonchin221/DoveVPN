@@ -3,6 +3,7 @@
 #include "dv_proto.h"
 #include "dv_msg.h"
 #include "dv_if.h"
+#include "dv_log.h"
 
 int
 dv_client_set_tun_ip(char *dev, const dv_proto_suite_t *suite, void *ssl)
@@ -13,10 +14,13 @@ dv_client_set_tun_ip(char *dev, const dv_proto_suite_t *suite, void *ssl)
 
     rlen = suite->ps_read(ssl, &msg, sizeof(msg));
     if (rlen <= 0) {
+        DV_LOG(DV_LOG_INFO, "Read tun msg failed, rlen = %d\n", rlen);
         return DV_ERROR;
     }
 
     if (msg.mi_header.mh_type != DV_MSG_TYPE_IPADDR) {
+        DV_LOG(DV_LOG_INFO, "Tun msg header invalid, type = %d\n",
+                msg.mi_header.mh_type);
         return DV_ERROR;
     }
 
@@ -24,6 +28,7 @@ dv_client_set_tun_ip(char *dev, const dv_proto_suite_t *suite, void *ssl)
             msg.mi_ip, msg.mi_mask, rlen, (int)sizeof(msg));
     ret = dv_if_set(dev, msg.mi_ip, msg.mi_mask, msg.mi_mtu);
     if (ret != DV_OK){
+        DV_LOG(DV_LOG_INFO, "Set if failed\n");
         return DV_ERROR;
     }
 
