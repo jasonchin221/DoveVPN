@@ -13,7 +13,7 @@ dv_client_set_tun_ip(char *dev, const dv_proto_suite_t *suite, void *ssl)
     int                 ret = DV_OK;
 
     rlen = suite->ps_read(ssl, &msg, sizeof(msg));
-    if (rlen <= 0) {
+    if (rlen < sizeof(msg)) {
         DV_LOG(DV_LOG_INFO, "Read tun msg failed, rlen = %d\n", rlen);
         return DV_ERROR;
     }
@@ -24,7 +24,7 @@ dv_client_set_tun_ip(char *dev, const dv_proto_suite_t *suite, void *ssl)
         return DV_ERROR;
     }
 
-    printf("ip = %s, mask = %d, rlen = %d, msg = %d\n",
+    DV_LOG(DV_LOG_DEBUG, "ip = %s, mask = %zu, rlen = %d, msg = %d\n",
             msg.mi_ip, msg.mi_mask, rlen, (int)sizeof(msg));
     ret = dv_if_set(dev, msg.mi_ip, msg.mi_mask, msg.mi_mtu);
     if (ret != DV_OK){

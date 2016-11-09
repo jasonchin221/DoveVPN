@@ -242,7 +242,7 @@ dv_client_process(dv_client_conf_t *conf)
     int                         ret = DV_ERROR;
 
     dv_log_init(DV_CLIENT_LOG_NAME);
-
+    dv_log_print = 1;
     ret = dv_event_init();
     if (ret != DV_OK) {
         DV_LOG(DV_LOG_INFO, "Event init failed!\n");

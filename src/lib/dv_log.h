@@ -1,6 +1,8 @@
 #ifndef __DV_LOG_H__
 #define __DV_LOG_H__
 
+extern int dv_log_print;
+
 #ifdef DV_CLIENT
 #define DV_LOG(priority, format, ...) \
     do { \
@@ -10,7 +12,6 @@
 
 #else
 #include <syslog.h>
-extern int dv_log_print;
 #define DV_LOG(priority, format, ...) \
     do { \
         if (dv_log_print) { \

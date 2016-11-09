@@ -32,8 +32,8 @@ typedef struct _dv_ip_pool_t {
     dv_ip_hash_t        *ip_hash_table;
     dv_subnet_ip_t      *ip_array; 
     struct list_head    ip_list_head;
-    int                 ip_mask;
-    int                 ip_mtu;
+    size_t              ip_mask;
+    size_t              ip_mtu;
 } dv_ip_pool_t; 
 
 typedef struct _dv_pool_create_t {
@@ -43,7 +43,8 @@ typedef struct _dv_pool_create_t {
 } dv_pool_create_t; 
 
 
-extern dv_u32 dv_get_subnet_mask(void);
+extern size_t dv_get_subnet_mask(void);
+extern size_t dv_get_subnet_mtu(void);
 extern dv_subnet_ip_t *dv_subnet_ip_alloc(void);
 extern void dv_subnet_ip_free(dv_subnet_ip_t *ip);
 extern int dv_ip_pool_init(char *subnet_ip, dv_u32 len, int mask, int mtu);

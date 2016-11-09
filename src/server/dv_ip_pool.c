@@ -87,13 +87,13 @@ dv_gen_ipv6(char *ip, dv_u32 len, char *subnet, int subnet_mask, dv_u32 seq,
     return DV_ERROR;
 }
 
-dv_u32
+size_t
 dv_get_subnet_mask(void)
 {
     return dv_ip_pool.ip_mask;
 }
 
-int
+size_t
 dv_get_subnet_mtu(void)
 {
     return dv_ip_pool.ip_mtu;

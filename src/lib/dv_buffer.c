@@ -73,6 +73,7 @@ dv_buf_data_to_ssl(void *ssl, dv_buffer_t *buf, const dv_proto_suite_t *suite)
     }
 
     data_len = buf->bf_tail - buf->bf_head;
+    printf("data_len = %d\n", data_len);
     wlen = suite->ps_write(ssl, buf->bf_head, data_len);
     if (wlen < 0) {
         return wlen;
