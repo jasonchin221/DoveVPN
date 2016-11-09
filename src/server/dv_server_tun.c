@@ -14,6 +14,8 @@
 #include "dv_server_tun.h"
 #include "dv_server_cycle.h"
 
+dv_u8 dv_route_net[DV_IP_ADDRESS_LEN];
+size_t dv_route_mask;
 dv_event_t *dv_srv_tun_rev;
 dv_event_t *dv_srv_tun_wev;
 

@@ -1,4 +1,5 @@
 #include <unistd.h>
+#include <string.h>
 
 #include "dv_errno.h"
 #include "dv_ip_pool.h"
@@ -78,6 +79,9 @@ int
 dv_server_cycle(dv_srv_conf_t *conf)
 {
     int     ret = DV_ERROR;
+
+    memcpy(dv_route_net, conf->sc_route_net, sizeof(conf->sc_route_net));
+    dv_route_mask = conf->sc_route_mask;
 
     ret = dv_srv_init(conf);
     if (ret != DV_OK) {

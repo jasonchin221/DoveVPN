@@ -12,7 +12,9 @@ typedef struct _dv_srv_conf_t {
     int                 sc_ssl_bufsize;
     char                sc_listen_ip[DV_IP_ADDRESS_LEN];
     char                sc_subnet_ip[DV_IP_ADDRESS_LEN];
+    char                sc_route_net[DV_IP_ADDRESS_LEN];
     int                 sc_subnet_mask;
+    int                 sc_route_mask;
     dv_cipher_conf_t    sc_proto;
 } dv_srv_conf_t;
 

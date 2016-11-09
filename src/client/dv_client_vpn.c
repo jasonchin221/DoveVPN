@@ -32,5 +32,11 @@ dv_client_set_tun_ip(char *dev, const dv_proto_suite_t *suite, void *ssl)
         return DV_ERROR;
     }
 
+    ret = dv_route_set(dev, msg.mi_route_net, msg.mi_route_mask);
+    if (ret != DV_OK){
+        DV_LOG(DV_LOG_INFO, "Set route failed\n");
+        return DV_ERROR;
+    }
+
     return DV_OK;
 }

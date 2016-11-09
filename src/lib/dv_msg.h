@@ -18,11 +18,14 @@ typedef struct _dv_msg_header_t {
 typedef struct _dv_msg_ipaddr_t {
     dv_msg_header_t     mi_header;
     char                mi_ip[DV_IP_ADDRESS_LEN];
+    char                mi_route_net[DV_IP_ADDRESS_LEN];
+    size_t              mi_route_mask;
     size_t              mi_mask;
     size_t              mi_mtu;
 } dv_msg_ipaddr_t;
 
 extern size_t dv_msg_ipalloc_build(void *buf, size_t buf_len, 
-        void *ip, size_t ip_len, size_t mask, size_t mtu);
+        void *ip, size_t ip_len, size_t mask, size_t mtu,
+        void *route_net, size_t route_mask);
 
 #endif

@@ -213,9 +213,10 @@ dv_srv_ssl_handshake_done(int sock, dv_event_t *ev, const dv_proto_suite_t *suit
 
     /* Send message to alloc ip address */
     conn->sc_ip = ip;
+
     mlen = dv_msg_ipalloc_build(wbuf->bf_head, wbuf->bf_bsize,
             ip->si_ip, strlen(ip->si_ip), dv_get_subnet_mask(),
-            dv_get_subnet_mtu());
+            dv_get_subnet_mtu(), dv_route_net, dv_route_mask);
     if (mlen == 0) {
         DV_LOG(DV_LOG_INFO, "Build ipalloc msg failed!\n");
         return DV_ERROR;

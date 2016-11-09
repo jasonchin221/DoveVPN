@@ -7,6 +7,8 @@
 #define DV_SRV_CONF_NETWORK         "network"
 #define DV_SRV_CONF_SUBNET_IP       "subnet-ip"
 #define DV_SRV_CONF_SUBNET_MASK     "subnet-mask"
+#define DV_SRV_CONF_ROUTE_NET_IP    "route-net-ip"
+#define DV_SRV_CONF_ROUTE_MASK      "route-mask"
 #define DV_SRV_CONF_LISTEN_IP       "listen-ip"
 #define DV_SRV_CONF_PORT            "listen-port"
 #define DV_SRV_CONF_MTU             "mtu"
@@ -53,6 +55,22 @@ static dv_conf_parse_t dv_srv_conf_network[] = {
         .cp_name = DV_SRV_CONF_SUBNET_MASK,
         .cp_len = sizeof(dv_srv_conf.sc_subnet_mask),
         .cp_offset = dv_offsetof(dv_srv_conf_t, sc_subnet_mask),
+        .cp_type = json_type_int,
+        .cp_necessary = DV_TRUE,
+        .cp_parse = dv_conf_parse_int,
+    },
+    {
+        .cp_name = DV_SRV_CONF_ROUTE_NET_IP,
+        .cp_len = sizeof(dv_srv_conf.sc_route_net),
+        .cp_offset = dv_offsetof(dv_srv_conf_t, sc_route_net),
+        .cp_type = json_type_string,
+        .cp_necessary = DV_TRUE,
+        .cp_parse = dv_conf_parse_str,
+    },
+    {
+        .cp_name = DV_SRV_CONF_ROUTE_MASK,
+        .cp_len = sizeof(dv_srv_conf.sc_route_mask),
+        .cp_offset = dv_offsetof(dv_srv_conf_t, sc_route_mask),
         .cp_type = json_type_int,
         .cp_necessary = DV_TRUE,
         .cp_parse = dv_conf_parse_int,
