@@ -83,32 +83,9 @@ out:
 }
 
 static int
-dv_cli_ssl_reconnect(int sock, dv_event_t *ev, const dv_proto_suite_t *suite)
+dv_cli_ssl_err_handler(int sock, dv_event_t *ev, const dv_proto_suite_t *suite)
 {
-    dv_event_t          *ssl_rev = &dv_cli_ssl_rev;
-    dv_cli_conn_t       *conn = ev->et_conn;
-    dv_client_conf_t    *conf = conn->cc_conf;
-    void                *ssl = NULL;
-
-    DV_LOG(DV_LOG_INFO, "Client reconnect!\n");
-    close(dv_cli_sockfd);
-    dv_cli_sockfd = -1;
-    while (1) {
-        ssl = dv_cli_ssl_create(conf, suite);
-        if (ssl != NULL) {
-            suite->ps_shutdown(conn->cc_ssl);
-            suite->ps_ssl_free(conn->cc_ssl);
-            conn->cc_ssl = ssl;
-            dv_event_del(ssl_rev);
-            dv_event_set_read(dv_cli_sockfd, ssl_rev);
-            if (dv_event_add(ssl_rev) != DV_OK) {
-                return DV_ERROR;
-            }
-            break;
-        }
-        sleep(conf->cc_reconn_interval);
-    }
-
+    exit(1);
     return DV_OK;
 }
  
@@ -140,7 +117,7 @@ dv_cli_tun_to_ssl(int sock, short event, void *arg)
                 /* Do nothing */
                 break;
             default:
-                dv_cli_ssl_reconnect(sock, ev, suite);
+                dv_cli_ssl_err_handler(sock, ev, suite);
                 break;
         }
     }
@@ -167,7 +144,7 @@ dv_cli_buf_to_ssl(int sock, short event, void *arg)
                 }
                 return;
             default:
-                dv_cli_ssl_reconnect(sock, ev, suite);
+                dv_cli_ssl_err_handler(sock, ev, suite);
                 break;
         }
     }
@@ -205,7 +182,7 @@ dv_cli_ssl_to_tun(int sock, short event, void *arg)
     int                     tun_fd = conn->cc_tun_fd;
 
     dv_ssl_read_handler(sock, event, arg, ssl, tun_fd, suite, rbuf,
-        dv_cli_ssl_reconnect);
+        dv_cli_ssl_err_handler);
 }
 
 static void
