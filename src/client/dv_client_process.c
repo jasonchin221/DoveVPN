@@ -82,28 +82,23 @@ out:
     return NULL;
 }
 
-static void *
-dv_cli_ssl_recreate(dv_client_conf_t *conf, const dv_proto_suite_t *suite,
-            void *ssl)
-{  
-    suite->ps_shutdown(ssl);
-    close(dv_cli_sockfd);
-    suite->ps_ssl_free(ssl);
-
-    return dv_cli_ssl_create(conf, suite);
-}
-
 static void
 dv_cli_ssl_reconnect(int sock, dv_event_t *ev, const dv_proto_suite_t *suite)
 {
     dv_event_t          *ssl_rev = &dv_cli_ssl_rev;
     dv_cli_conn_t       *conn = ev->et_conn;
     dv_client_conf_t    *conf = conn->cc_conf;
+    void                *ssl = NULL;
 
     DV_LOG(DV_LOG_INFO, "Client reconnect!\n");
+    close(dv_cli_sockfd);
+    dv_cli_sockfd = -1;
     while (1) {
-        conn->cc_ssl = dv_cli_ssl_recreate(conf, suite, conn->cc_ssl);
-        if (conn->cc_ssl != NULL) {
+        ssl = dv_cli_ssl_create(conf, suite);
+        if (ssl != NULL) {
+            suite->ps_shutdown(conn->cc_ssl);
+            suite->ps_ssl_free(conn->cc_ssl);
+            conn->cc_ssl = ssl;
             dv_event_del(ssl_rev);
             dv_event_set_read(dv_cli_sockfd, ssl_rev);
             if (dv_event_add(ssl_rev) != DV_OK) {
