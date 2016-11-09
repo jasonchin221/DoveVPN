@@ -19,13 +19,14 @@ dv_sk_connect_v4(const char *dip, dv_u16 dport)
 
     sockfd = socket(AF_INET, SOCK_STREAM, 0);
     if (sockfd < 0) {
+        DV_LOG(DV_LOG_INFO, "Socket syscall failed(%s)!\n", strerror(errno));
         return DV_ERROR;
     }
 
     dest.sin_port = DV_HTONS(dport);
     dest.sin_addr.s_addr = inet_addr(dip);
     if (connect(sockfd, (struct sockaddr *)&dest, sizeof(dest)) != 0) {
-        DV_LOG(DV_LOG_INFO, "Connect to dest  failed(%s)!\n", strerror(errno));
+        DV_LOG(DV_LOG_INFO, "Connect to dest failed(%s)!\n", strerror(errno));
         return DV_ERROR;
     }
  

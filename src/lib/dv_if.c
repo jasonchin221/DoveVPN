@@ -5,6 +5,7 @@
 #include "dv_mem.h"
 #include "dv_errno.h"
 #include "dv_if.h"
+#include "dv_log.h"
 
 #define DV_IF_SET_IP_STR_FORMAT     "ifconfig %s %s/%d up mtu %d"
 
@@ -26,6 +27,7 @@ dv_if_set(char *dev, char *ip, int mask, int mtu)
     snprintf(str, len, DV_IF_SET_IP_STR_FORMAT, dev, ip, mask, mtu);
     ret = system(str);
     if (ret != 0) {
+        DV_LOG(DV_LOG_INFO, "Error cmd: %s\n", str);
         return DV_ERROR;
     }
 
