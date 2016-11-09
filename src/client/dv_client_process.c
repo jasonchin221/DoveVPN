@@ -82,7 +82,7 @@ out:
     return NULL;
 }
 
-static void
+static int
 dv_cli_ssl_reconnect(int sock, dv_event_t *ev, const dv_proto_suite_t *suite)
 {
     dv_event_t          *ssl_rev = &dv_cli_ssl_rev;
@@ -102,12 +102,14 @@ dv_cli_ssl_reconnect(int sock, dv_event_t *ev, const dv_proto_suite_t *suite)
             dv_event_del(ssl_rev);
             dv_event_set_read(dv_cli_sockfd, ssl_rev);
             if (dv_event_add(ssl_rev) != DV_OK) {
-                return;
+                return DV_ERROR;
             }
             break;
         }
         sleep(conf->cc_reconn_interval);
     }
+
+    return DV_OK;
 }
  
 static void

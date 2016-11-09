@@ -5,7 +5,7 @@
 #include "dv_event.h"
 
 
-typedef void (*dv_ssl_err_handler)(int sock, dv_event_t *ev,
+typedef int (*dv_ssl_err_handler)(int sock, dv_event_t *ev,
             const dv_proto_suite_t *suite);
 
 typedef struct _dv_trans_buf_t {

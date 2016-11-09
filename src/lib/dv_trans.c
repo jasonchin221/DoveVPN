@@ -214,8 +214,10 @@ dv_ssl_read_handler(int sock, short event, void *arg, void *ssl, int tun_fd,
             break;
         }
 
-        err_handler(sock, ev, suite);
-        continue;
+        ret = err_handler(sock, ev, suite);
+        if (ret != DV_OK) {
+            break;
+        }
     }
 }
 

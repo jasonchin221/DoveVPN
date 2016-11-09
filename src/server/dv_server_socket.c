@@ -123,7 +123,7 @@ dv_srv_ssl_add_listenning(char *ip, dv_event_handler callback, int port)
     return ev;
 }
 
-static void
+static int
 dv_srv_ssl_err_handler(int sock, dv_event_t *ev, const dv_proto_suite_t *suite)
 {
     dv_sk_conn_t            *conn = ev->et_conn;
@@ -133,6 +133,8 @@ dv_srv_ssl_err_handler(int sock, dv_event_t *ev, const dv_proto_suite_t *suite)
     dv_event_destroy(ev);
     dv_event_del(wev);
     dv_event_destroy(wev);
+
+    return DV_ERROR;
 }
 
 static void
@@ -220,7 +222,6 @@ dv_srv_ssl_handshake_done(int sock, dv_event_t *ev, const dv_proto_suite_t *suit
     }
 
     wbuf->bf_tail += mlen;
-    printf("mlen = %zu\n", mlen);
     ip->si_wev = conn->sc_wev;
 
     dv_ip_hash_add(ip);
@@ -355,7 +356,7 @@ _dv_srv_ssl_accept(int sock, short event, void *arg, struct sockaddr *addr,
     conn->sc_rev = rev;
     rev->et_conn = conn;
     rev->et_conn_free = dv_sk_conn_free;
-    rev->et_peer_ev = &dv_srv_tun_wev;
+    rev->et_peer_ev = dv_srv_tun_wev;
     wev = dv_event_create();
     if (wev == NULL) {
         DV_LOG(DV_LOG_INFO, "Create event failed!\n");
