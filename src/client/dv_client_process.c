@@ -7,6 +7,7 @@
 #include <netinet/in.h>
 #include <sys/socket.h>
 #include <unistd.h>
+#include <fcntl.h>
 
 #include "dv_types.h"
 #include "dv_proto.h"
@@ -67,6 +68,8 @@ dv_cli_ssl_create(dv_client_conf_t *conf, const dv_proto_suite_t *suite)
         DV_LOG(DV_LOG_INFO, "Set tun failed!\n");
         goto out;
     }
+
+    fcntl(dv_cli_sockfd, F_SETFL, O_NONBLOCK);
 
     return ssl;
 
