@@ -120,11 +120,11 @@ dv_event_del(dv_event_t *event)
 dv_event_t * 
 dv_event_create(void)
 {
-    dv_event_t* event;
+    dv_event_t  *event = NULL;
 
     event = dv_calloc(sizeof(*event));
-    if (!event) {
-        DV_LOG(DV_LOG_NOTICE, "Malloc event failed!\n");
+    if (event == NULL) {
+        DV_LOG(DV_LOG_NOTICE, "Alloc event failed!\n");
         return NULL;
     }
 
