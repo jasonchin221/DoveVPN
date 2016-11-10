@@ -111,18 +111,20 @@ dv_cli_tun_to_ssl(int sock, short event, void *arg)
                 continue;
             case -DV_EWANT_READ:
                 if (dv_event_add(ev) != DV_OK) {
+                    DV_LOG(DV_LOG_INFO, "Event add failed!\n");
                 }
                 return;
             case -DV_EWANT_WRITE:
                 if (dv_event_add(ev->et_peer_ev) != DV_OK) {
                 }
-                break;
+                return;
             case -DV_ETUN:
                 /* Do nothing */
+                DV_LOG(DV_LOG_INFO, "Tun error!\n");
                 break;
             default:
                 dv_cli_ssl_err_handler(sock, ev, suite);
-                break;
+                return;
         }
     }
 }
@@ -185,6 +187,7 @@ dv_cli_ssl_to_tun(int sock, short event, void *arg)
     dv_buffer_t             *rbuf = conn->cc_rbuf;
     int                     tun_fd = conn->cc_tun_fd;
 
+    DV_LOG(DV_LOG_INFO, "Client: ssl data arrived!\n");
     dv_ssl_read_handler(sock, event, arg, ssl, tun_fd, suite, rbuf,
         dv_cli_ssl_err_handler);
 }

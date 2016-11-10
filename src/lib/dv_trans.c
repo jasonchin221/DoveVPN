@@ -1,6 +1,6 @@
 #include <string.h>
 #include <unistd.h>
-
+#include <errno.h>
 
 #include "dv_types.h"
 #include "dv_mem.h"
@@ -82,6 +82,10 @@ dv_trans_data_to_ssl(int tun_fd, void *ssl, dv_buffer_t *buf,
         }
 
         if (rlen < 0) {
+            if (errno == EAGAIN) {
+                return -DV_EWANT_READ;
+            }
+            
             return -DV_ETUN;
         }
 
