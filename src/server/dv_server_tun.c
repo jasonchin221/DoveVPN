@@ -34,6 +34,7 @@ dv_srv_tun_to_ssl(int sock, short event, void *arg)
     ssize_t                 rlen = 0;
     int                     ret = DV_ERROR;
 
+    DV_LOG(DV_LOG_INFO, "Tun package arrived!\n");
     rlen = read(sock, tbuf->tb_buf, tbuf->tb_buf_size);
     if (rlen <= 0) {
         DV_LOG(DV_LOG_INFO, "Tun read error(%zd)!\n", rlen);

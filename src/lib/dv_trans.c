@@ -188,7 +188,12 @@ dv_ssl_read_handler(int sock, short event, void *arg, void *ssl, int tun_fd,
     while (1) {
         rlen = suite->ps_read(ssl, rbuf->bf_tail, rbuf->bf_bsize - 
                 (rbuf->bf_tail - rbuf->bf_buf));
+        DV_LOG(DV_LOG_INFO, "rlen = %d\n!", rlen);
         if (rlen > 0) {
+            if (dv_event_add(ev) != DV_OK) {
+                DV_LOG(DV_LOG_INFO, "Add write event failed\n!");
+                return;
+            }
             rbuf->bf_tail += rlen;
             data_len = rbuf->bf_head - rbuf->bf_tail;
             ip_tlen = dv_ip_datalen(rbuf->bf_head, data_len);
@@ -204,6 +209,7 @@ dv_ssl_read_handler(int sock, short event, void *arg, void *ssl, int tun_fd,
                 }
                 break;
             }
+            continue;
         }
 
         if (rlen == -DV_EWANT_READ) {
