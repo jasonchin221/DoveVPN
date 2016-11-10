@@ -99,6 +99,7 @@ dv_cli_tun_to_ssl(int sock, short event, void *arg)
     int                     tun_fd = conn->cc_tun_fd;
     int                     ret = DV_ERROR;
 
+   DV_LOG(DV_LOG_INFO, "Client tun package arrived!\n");
     while (1) {
         ret = dv_trans_data_to_ssl(tun_fd, ssl, conn->cc_wbuf,
                 suite, &dv_trans_buf, 0);
@@ -265,21 +266,19 @@ dv_client_process(dv_client_conf_t *conf)
         goto out;
     }
 
-    tun_rev->et_conn = tun_wev->et_conn = &conn;
-    dv_event_set_read(tun_fd, tun_rev);
-    tun_rev->et_handler = dv_cli_tun_to_ssl;
-    dv_event_set_write(tun_fd, tun_wev);
-    tun_wev->et_handler = dv_cli_buf_to_tun;
+    dv_event_conn_set(tun_rev, &conn, tun_fd, dv_cli_tun_to_ssl,
+            dv_event_set_read);
+    dv_event_conn_set(tun_wev, &conn, tun_fd, dv_cli_buf_to_tun,
+            dv_event_set_write);
     if (dv_event_add(tun_rev) != DV_OK) {
         DV_LOG(DV_LOG_INFO, "Add event failed!\n");
         goto out;
     }
 
-    ssl_rev->et_conn = ssl_wev->et_conn = &conn;
-    ssl_rev->et_handler = dv_cli_ssl_to_tun;
-    dv_event_set_read(dv_cli_sockfd, ssl_rev);
-    ssl_wev->et_handler = dv_cli_buf_to_ssl;
-    dv_event_set_write(dv_cli_sockfd, ssl_wev);
+    dv_event_conn_set(ssl_rev, &conn, dv_cli_sockfd, dv_cli_ssl_to_tun,
+            dv_event_set_read);
+    dv_event_conn_set(ssl_wev, &conn, dv_cli_sockfd, dv_cli_buf_to_ssl,
+            dv_event_set_write);
     if (dv_event_add(ssl_rev) != DV_OK) {
         DV_LOG(DV_LOG_INFO, "Add event failed!\n");
         goto out;
@@ -290,6 +289,7 @@ dv_client_process(dv_client_conf_t *conf)
     ssl_wev->et_peer_ev = tun_rev;
     tun_rev->et_peer_ev = ssl_wev;
 
+    DV_LOG(DV_LOG_INFO, "Before loop\n");
     ret = dv_process_events();
     DV_LOG(DV_LOG_INFO, "After loop, ret = %d\n", ret);
     ret = DV_ERROR;

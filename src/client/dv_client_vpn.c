@@ -4,6 +4,7 @@
 #include "dv_msg.h"
 #include "dv_if.h"
 #include "dv_log.h"
+#include "dv_trans.h"
 
 int
 dv_client_set_tun_ip(char *dev, const dv_proto_suite_t *suite, void *ssl)
@@ -29,6 +30,12 @@ dv_client_set_tun_ip(char *dev, const dv_proto_suite_t *suite, void *ssl)
     ret = dv_if_set(dev, msg.mi_ip, msg.mi_mask, msg.mi_mtu);
     if (ret != DV_OK){
         DV_LOG(DV_LOG_INFO, "Set if failed\n");
+        return DV_ERROR;
+    }
+
+    ret = dv_trans_init(msg.mi_mtu);
+    if (ret != DV_OK) {
+        DV_LOG(DV_LOG_INFO, "Trans init failed\n");
         return DV_ERROR;
     }
 

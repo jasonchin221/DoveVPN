@@ -26,6 +26,15 @@ typedef struct _dv_event_register_t {
     int             er_sockfd;
 } dv_event_register_t;
 
+static inline void
+dv_event_conn_set(dv_event_t *ev, void *conn, int fd, dv_event_handler handler,
+        void (*event_set)(int, dv_event_t *))
+{
+    ev->et_conn = conn;
+    ev->et_handler = handler;
+    event_set(fd, ev);
+}
+   
 extern dv_event_t *dv_event_create(void);
 extern int dv_event_destroy(dv_event_t *event);
 extern int dv_event_init(void);
