@@ -4,6 +4,7 @@
 #include "dv_lib.h"
 #include "dv_proto.h"
 #include "dv_log.h"
+#include "dv_process.h"
 #include "dv_server_signal.h"
 #include "dv_server_conf.h"
 #include "dv_server_core.h"
@@ -24,6 +25,7 @@ dv_srv_init(dv_srv_conf_t *conf)
     int                     ret = DV_ERROR;
 
     dv_log_init(DV_SRV_LOG_NAME);
+    dv_process_init();
     ret = dv_srv_signal_init();
     if (ret != DV_OK) {
         DV_LOG(DV_LOG_INFO, "Init signal failed!\n");

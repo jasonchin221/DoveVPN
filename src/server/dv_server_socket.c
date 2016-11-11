@@ -335,7 +335,11 @@ _dv_srv_ssl_accept(int sock, short event, void *arg, struct sockaddr *addr,
         return;
     }
 
-    fcntl(accept_fd, F_SETFL, O_NONBLOCK);
+    if (fcntl(accept_fd, F_SETFL, O_NONBLOCK) == -1) {
+        DV_LOG(DV_LOG_INFO, "Set noblock failed!\n");
+        return;
+    }
+
     conn = dv_sk_conn_alloc(DV_SERVER_BUF_SIZE);
     if (conn == NULL) {
         DV_LOG(DV_LOG_INFO, "Alloc conn failed!\n");

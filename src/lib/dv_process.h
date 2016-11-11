@@ -5,6 +5,9 @@
 #include <unistd.h>
 
 #define DV_MAX_PROCESSES        1024
+#define DV_INVALID_PID          -1
+
+typedef void (*dv_spawn_proc_pt)(void *data);
 
 typedef struct _dv_process_t {
     pid_t               pc_pid;
@@ -24,5 +27,7 @@ typedef struct _dv_process_t {
     unsigned            exited:1;
 #endif
 } dv_process_t;
+
+extern void dv_process_init(void);
 
 #endif

@@ -16,7 +16,7 @@ static dv_signal_t dv_srv_signals[] = {
 
     { SIGQUIT, "SIGQUIT", "quit", dv_srv_signal_handler },
 
-    { SIGUSR2, "SIGUSR2", "", dv_srv_signal_handler },
+    { SIGUSR1, "SIGUSR1", "", dv_srv_signal_handler },
 
     { SIGALRM, "SIGALRM", "", dv_srv_signal_handler },
 

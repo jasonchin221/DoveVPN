@@ -154,6 +154,7 @@ _dv_srv_tun_ev_destroy(dv_event_t **ev)
 void
 dv_srv_tun_ev_destroy(void)
 {
+    dv_ip_pool_exit();
     _dv_srv_tun_ev_destroy(&dv_srv_tun_rev);
     _dv_srv_tun_ev_destroy(&dv_srv_tun_wev);
 }
