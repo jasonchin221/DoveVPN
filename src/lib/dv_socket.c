@@ -3,6 +3,7 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <sys/socket.h>
+#include <fcntl.h>
 
 #include "dv_types.h"
 #include "dv_errno.h"
@@ -86,5 +87,7 @@ dv_sk_bind(const char *dip, dv_u16 dport)
         return DV_ERROR;
     }
  
+    fcntl(sockfd, F_SETFL, O_NONBLOCK);
+
     return sockfd;
 }

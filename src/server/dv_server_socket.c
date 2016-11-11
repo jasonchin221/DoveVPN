@@ -1,5 +1,6 @@
 #include <unistd.h>
 #include <string.h>
+#include <fcntl.h>
 
 #include "dv_types.h"
 #include "dv_socket.h"
@@ -149,6 +150,7 @@ dv_srv_ssl_to_tun(int sock, short event, void *arg)
     dv_buffer_t             *rbuf = peer_conn->sc_buf;
     int                     tun_fd = dv_srv_tun.tn_fd;
 
+    DV_LOG(DV_LOG_INFO, "SSL data in!\n");
     dv_ssl_read_handler(sock, event, arg, ssl, tun_fd, suite, rbuf,
         dv_srv_ssl_err_handler);
 }
@@ -243,12 +245,11 @@ dv_srv_ssl_handshake(int sock, short event, void *arg)
     const dv_proto_suite_t  *suite = dv_srv_ssl_proto_suite;
     dv_event_t              *ev = arg; 
     dv_event_t              *wev = NULL; 
-    dv_sk_conn_t            *conn = NULL;
+    dv_sk_conn_t            *conn = ev->et_conn;
     void                    *ssl = NULL;
     int                     ret = DV_OK;
 
     ssl = conn->sc_ssl;
-    printf("Handshake! conn = %p\n", conn);
     conn = ev->et_conn;
 
     /* 建立 SSL 连接 */
@@ -327,13 +328,14 @@ _dv_srv_ssl_accept(int sock, short event, void *arg, struct sockaddr *addr,
     int                     accept_fd = 0;
     int                     ret = DV_OK;
 
-    printf("Accept!\n");
+    DV_LOG(DV_LOG_INFO, "Accept!\n");
     accept_fd = accept(sock, addr, addrlen); 
     if (accept_fd < 0) {
         DV_LOG(DV_LOG_INFO, "Accept failed!\n");
         return;
     }
 
+    fcntl(accept_fd, F_SETFL, O_NONBLOCK);
     conn = dv_sk_conn_alloc(DV_SERVER_BUF_SIZE);
     if (conn == NULL) {
         DV_LOG(DV_LOG_INFO, "Alloc conn failed!\n");
@@ -372,6 +374,7 @@ _dv_srv_ssl_accept(int sock, short event, void *arg, struct sockaddr *addr,
 
     /* 建立 SSL 连接 */
     ret = suite->ps_accept(ssl);
+    DV_LOG(DV_LOG_INFO, "ssl accept ret = %d!\n", ret);
     conn->sc_flags |= DV_SK_CONN_FLAG_HANDSHAKED;
     switch (ret) {
         case DV_OK:
@@ -381,11 +384,11 @@ _dv_srv_ssl_accept(int sock, short event, void *arg, struct sockaddr *addr,
                 goto free_ev;
             }
             return;
-        case DV_EWANT_READ:
+        case -DV_EWANT_READ:
             rev->et_handler = dv_srv_ssl_handshake;
             dv_event_set_read(accept_fd, rev);
             break;
-        case DV_EWANT_WRITE:
+        case -DV_EWANT_WRITE:
             rev->et_handler = dv_srv_ssl_handshake;
             dv_event_set_write(accept_fd, rev);
             break;
@@ -393,6 +396,10 @@ _dv_srv_ssl_accept(int sock, short event, void *arg, struct sockaddr *addr,
             goto free_ev;
     }
 
+    if (dv_event_add(rev) != DV_OK) {
+        DV_LOG(DV_LOG_INFO, "Add rev failed!\n");
+        goto free_ev;
+    }
     return;
 out:
     if (ssl != NULL) {

@@ -109,6 +109,7 @@ dv_srv_tun_ev_create(int tun_fd, size_t buf_size)
     }
 
     rev->et_handler = dv_srv_tun_to_ssl;
+    DV_LOG(DV_LOG_INFO, "Tun add rev!tun_fd = %d\n", tun_fd);
     dv_event_set_persist_read(tun_fd, rev);
     if (dv_event_add(rev) != DV_OK) {
         DV_LOG(DV_LOG_INFO, "Tun add rev failed!\n");

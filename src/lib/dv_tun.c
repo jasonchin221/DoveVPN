@@ -41,6 +41,8 @@ dv_tun_dev_create(dv_tun_t *tun, int i)
         return DV_ERROR;
     }
 
+    fcntl(tun->tn_fd, F_SETFL,O_NONBLOCK);
+
     return DV_OK;
 }
 

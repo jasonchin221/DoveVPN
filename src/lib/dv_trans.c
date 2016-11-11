@@ -92,6 +92,7 @@ dv_trans_data_to_ssl(int tun_fd, void *ssl, dv_buffer_t *buf,
 
     if (data_len == 0) {
         wlen = suite->ps_write(ssl, tbuf->tb_buf, rlen);
+        DV_LOG(DV_LOG_INFO, "SSL data out %d Bytes!\n", wlen);
         if (wlen == rlen) {
             return DV_OK;
         }
@@ -188,7 +189,6 @@ dv_ssl_read_handler(int sock, short event, void *arg, void *ssl, int tun_fd,
     while (1) {
         rlen = suite->ps_read(ssl, rbuf->bf_tail, rbuf->bf_bsize - 
                 (rbuf->bf_tail - rbuf->bf_buf));
-        DV_LOG(DV_LOG_INFO, "rlen = %d\n!", rlen);
         if (rlen > 0) {
             if (dv_event_add(ev) != DV_OK) {
                 DV_LOG(DV_LOG_INFO, "Add write event failed\n!");
