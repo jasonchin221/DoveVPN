@@ -49,6 +49,10 @@ dv_tun_dev_create(dv_tun_t *tun, int i)
 int
 dv_tun_dev_destroy(dv_tun_t *tun)
 {
+    if (tun->tn_fd < 0) {
+        return DV_ERROR;
+    }
+
     if (ioctl(tun->tn_fd, TUNSETPERSIST, 0) < 0) {
         DV_LOG(DV_LOG_EMERG, "Disabling TUNSETPERSIST\n");
         return DV_ERROR;

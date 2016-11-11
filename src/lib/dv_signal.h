@@ -6,12 +6,6 @@
 
 #define dv_signal_value(n)      SIG##n
 #define dv_value(n)             #n
-#define DV_SHUTDOWN_SIGNAL      QUIT
-#define DV_TERMINATE_SIGNAL     TERM
-#define DV_NOACCEPT_SIGNAL      WINCH
-#define DV_RECONFIGURE_SIGNAL   HUP
-#define DV_REOPEN_SIGNAL        USR1
-#define DV_CHANGEBIN_SIGNAL     USR2
 
 typedef struct _dv_signal_t {
     int         sig_no;
@@ -20,6 +14,7 @@ typedef struct _dv_signal_t {
     void        (*sig_handler)(int signo);
 } dv_signal_t;
 
-extern int dv_init_signals(void);
+extern int dv_signal_init(dv_signal_t *signals);
+extern int dv_signal_process(dv_signal_t *signals, char *name, pid_t pid);
 
 #endif

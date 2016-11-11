@@ -112,10 +112,8 @@ dv_server_cycle(dv_srv_conf_t *conf)
     DV_LOG(DV_LOG_INFO, "After loop, ret = %d\n", ret);
     ret = DV_OK;
 out:
-    if (dv_srv_tun.tn_fd >= 0) {
-        dv_srv_tun_ev_destroy();
-        dv_tun_dev_destroy(&dv_srv_tun);
-    }
+    dv_srv_tun_ev_destroy();
+    dv_tun_dev_destroy(&dv_srv_tun);
     dv_trans_exit();
     dv_srv_exit();
     return ret;

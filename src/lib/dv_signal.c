@@ -7,73 +7,21 @@
 #include <signal.h>
 #include <fcntl.h>
 #include <errno.h>
+#include <string.h>
 
 #include "dv_types.h"
 #include "dv_log.h"
 #include "dv_errno.h"
 #include "dv_process.h"
-
-static void dv_execute_proc(dv_cycle_t *cycle, void *data);
-static void dv_signal_handler(int signo);
-
-int             dv_process_slot;
-int             dv_channel;
-int             dv_last_process;
-dv_process_t    dv_processes[DV_MAX_PROCESSES];
-
-dv_signal_t  dv_signals[] = {
-    { dv_signal_value(DV_RECONFIGURE_SIGNAL),
-      "SIG" dv_value(DV_RECONFIGURE_SIGNAL),
-      "reload",
-      dv_signal_handler },
-
-    { dv_signal_value(DV_REOPEN_SIGNAL),
-      "SIG" dv_value(DV_REOPEN_SIGNAL),
-      "reopen",
-      dv_signal_handler },
-
-    { dv_signal_value(DV_NOACCEPT_SIGNAL),
-      "SIG" dv_value(DV_NOACCEPT_SIGNAL),
-      "",
-      dv_signal_handler },
-
-    { dv_signal_value(DV_TERMINATE_SIGNAL),
-      "SIG" dv_value(DV_TERMINATE_SIGNAL),
-      "stop",
-      dv_signal_handler },
-
-    { dv_signal_value(DV_SHUTDOWN_SIGNAL),
-      "SIG" dv_value(DV_SHUTDOWN_SIGNAL),
-      "quit",
-      dv_signal_handler },
-
-    { dv_signal_value(DV_CHANGEBIN_SIGNAL),
-      "SIG" dv_value(DV_CHANGEBIN_SIGNAL),
-      "",
-      dv_signal_handler },
-
-    { SIGALRM, "SIGALRM", "", dv_signal_handler },
-
-    { SIGINT, "SIGINT", "", dv_signal_handler },
-
-    { SIGIO, "SIGIO", "", dv_signal_handler },
-
-    { SIGCHLD, "SIGCHLD", "", dv_signal_handler },
-
-    { SIGSYS, "SIGSYS, SIG_IGN", "", SIG_IGN },
-
-    { SIGPIPE, "SIGPIPE, SIG_IGN", "", SIG_IGN },
-
-    { 0, NULL, "", NULL }
-};
+#include "dv_signal.h"
 
 int
-dv_init_signals(void)
+dv_signal_init(dv_signal_t *signals)
 {
     dv_signal_t         *sig = NULL;
     struct sigaction    sa = {};
 
-    for (sig = dv_signals; sig->sig_no != 0; sig++) {
+    for (sig = signals; sig->sig_no != 0; sig++) {
         memset(&sa, 0, sizeof(sa));
         sa.sa_handler = sig->sig_handler;
         sigemptyset(&sa.sa_mask);
@@ -230,17 +178,17 @@ dv_signal_handler(int signo)
 #endif
 
 int
-dv_os_signal_process(char *name, pid_t pid)
+dv_signal_process(dv_signal_t *signals, char *name, pid_t pid)
 {
     dv_signal_t     *sig = NULL;
 
-    for (sig = dv_signals; sig->sig_no != 0; sig++) {
-        if (dv_strcmp(name, sig->sig_action) == 0) {
+    for (sig = signals; sig->sig_no != 0; sig++) {
+        if (strcmp(name, sig->sig_action) == 0) {
             if (kill(pid, sig->sig_no) != -1) {
                 return DV_OK;
             }
 
-            DV_LOG(DV_LOG_ALERT, "kill(%P, %d) failed", pid, sig->sig_no);
+            DV_LOG(DV_LOG_ALERT, "kill(%d, %d) failed", (int)pid, sig->sig_no);
         }
     }
 
