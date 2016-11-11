@@ -91,3 +91,36 @@ dv_sk_bind(const char *dip, dv_u16 dport)
 
     return sockfd;
 }
+
+ssize_t
+dv_sk_send(int fd, const void *buf, size_t len)
+{
+     ssize_t     wlen = 0;
+
+     wlen = send(fd, buf, len, MSG_NOSIGNAL);
+     if (wlen < 0) {
+         DV_LOG(DV_LOG_DEBUG, "Error = %s!\n", strerror(errno));
+         if (errno == EAGAIN) {
+             return -DV_EWANT_WRITE;
+         }
+     }
+
+     return wlen;
+}
+
+ssize_t
+dv_sk_recv(int fd, void *buf, size_t len)
+{
+     ssize_t     rlen = 0;
+
+     rlen = recv(fd, buf, len, MSG_NOSIGNAL);
+     if (rlen < 0) {
+         DV_LOG(DV_LOG_DEBUG, "Error = %s!\n", strerror(errno));
+         if (errno == EAGAIN) {
+             return -DV_EWANT_READ;
+         }
+     }
+
+     return rlen;
+}
+

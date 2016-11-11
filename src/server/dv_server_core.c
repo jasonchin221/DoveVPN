@@ -92,6 +92,7 @@ out:
 void
 dv_srv_exit(void)
 {
+    dv_process_exit();
     if (dv_srv_ssl_proto_suite == NULL) {
         return;
     }

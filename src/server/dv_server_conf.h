@@ -8,6 +8,7 @@ typedef struct _dv_srv_conf_t {
     int                 sc_daemon;
     int                 sc_mtu;
     int                 sc_port;
+    int                 sc_single_process;
     int                 sc_tun_bufsize;
     int                 sc_ssl_bufsize;
     char                sc_listen_ip[DV_IP_ADDRESS_LEN];

@@ -1,7 +1,4 @@
-Client:
-1. Add fd of tun to epoll
-2. Transmite data
 Server:
 1. Multi process
 2. CPU bind
-3. Transmite data
+3. Event, connection memory pool

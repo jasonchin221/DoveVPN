@@ -17,7 +17,7 @@
 
 pid_t           dv_pid;
 int             dv_process_slot;
-int             dv_pc_channel;
+int             dv_channel;
 int             dv_last_process;
 dv_process_t    dv_processes[DV_MAX_PROCESSES];
 
@@ -69,7 +69,7 @@ dv_process_daemonize(void)
 }
 
 pid_t
-dv_spawn_process(dv_spawn_proc_pt proc, void *data, char *name)
+dv_spawn_process(void *cycle, dv_spawn_proc_pt proc, void *data, char *name)
 {
     dv_u32      s = 0;
     dv_ulong    on = 0;
@@ -136,7 +136,7 @@ dv_spawn_process(dv_spawn_proc_pt proc, void *data, char *name)
         return DV_INVALID_PID;
     }
 
-    dv_pc_channel = dv_processes[s].pc_channel[1];
+    dv_channel = dv_processes[s].pc_channel[1];
 
     dv_process_slot = s;
 
@@ -151,7 +151,7 @@ dv_spawn_process(dv_spawn_proc_pt proc, void *data, char *name)
 
     case 0:
         dv_pid = getpid();
-        proc(data);
+        proc(cycle, data);
         break;
 
     default:
@@ -203,5 +203,18 @@ dv_process_init(void)
 
     for (i = 0; i < DV_MAX_PROCESSES; i++) {
         dv_processes[i].pc_pid = DV_INVALID_PID;
+    }
+}
+
+void
+dv_process_exit(void)
+{
+    dv_u32  i = 0;
+
+    for (i = 0; i < DV_MAX_PROCESSES; i++) {
+        if (dv_processes[i].pc_pid == DV_INVALID_PID) {
+            continue;
+        }
+        dv_close_channel(dv_processes[i].pc_channel);
     }
 }
