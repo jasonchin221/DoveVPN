@@ -13,6 +13,7 @@
 #include "dv_process.h"
 #include "dv_assert.h"
 #include "dv_socket.h"
+#include "dv_setproctitle.h"
 #include "dv_server_conf.h"
 #include "dv_server_core.h"
 #include "dv_server_socket.h"
@@ -22,12 +23,16 @@
 
 #include <signal.h>
 
+#define DV_MASTER_PROCESS_NAME  "master process"
+
 sig_atomic_t dv_quit;
 sig_atomic_t dv_reconfigure;
 sig_atomic_t dv_terminate;
 dv_u8 dv_process;
 dv_u8 dv_worker;
 dv_u8 dv_exiting;
+int dv_argc;
+char **dv_argv;
 static char *dv_pid_file;
 
 dv_tun_t dv_srv_tun = {
@@ -240,7 +245,7 @@ dv_worker_process_init(int worker)
     sigset_t    set = {};
     int         n = 0;
 
-    //ngx_setaffinity(cpu_affinity, cycle->log);
+    //dv_setaffinity(cpu_affinity, cycle->log);
     sigemptyset(&set);
     
     if (sigprocmask(SIG_SETMASK, &set, NULL) == -1) {
@@ -288,7 +293,7 @@ dv_worker_process_cycle(void *cycle, void *data)
 
     dv_worker_process_init(worker);
 
-    //dv_setproctitle("worker process");
+    dv_setproctitle("worker process");
 
     ret = dv_srv_create_and_set_tun(tun, worker, mask, conf->sc_mtu,
             conf->sc_subnet_ip, sizeof(conf->sc_subnet_ip),
@@ -340,7 +345,11 @@ dv_reap_children(int cmd)
 static int
 dv_master_process_cycle(dv_srv_conf_t *conf, dv_u32 cpu_num)
 {
+    char                *title = NULL;
+    char                *p = NULL;
     sigset_t            set = {};
+    size_t              size = 0;
+    int                 i = 0;
     int                 ret = DV_ERROR;
 
     sigemptyset(&set);
@@ -359,6 +368,29 @@ dv_master_process_cycle(dv_srv_conf_t *conf, dv_u32 cpu_num)
     }
    
     sigemptyset(&set);
+
+    size = sizeof(DV_MASTER_PROCESS_NAME);
+    for (i = 0; i < dv_argc; i++) {
+        size += strlen(dv_argv[i]) + 1;
+    }
+
+    title = dv_calloc(size);
+    if (title == NULL) {
+        /* fatal */
+        exit(2);
+    }
+
+    p = title;
+    p += snprintf(p, sizeof(DV_MASTER_PROCESS_NAME), 
+            "%s", DV_MASTER_PROCESS_NAME);
+    for (i = 0; i < dv_argc; i++) {
+        *p++ = ' ';
+        p += snprintf(p, size - (p - title), "%s", dv_argv[i]);
+    }
+
+    dv_setproctitle(title);
+    dv_free(title);
+
     dv_process = DV_PROCESS_MASTER;
 
     ret = dv_start_worker_processes(conf, cpu_num);
@@ -390,7 +422,11 @@ dv_master_process_cycle(dv_srv_conf_t *conf, dv_u32 cpu_num)
 int
 dv_single_process_cycle(dv_srv_conf_t *conf)
 {
+    int     seq = 0;
+
     DV_LOG(DV_LOG_INFO, "Signale process!\n");
+    dv_worker_process_cycle(conf, &seq);
+
     return DV_OK;
 }
 
@@ -421,7 +457,7 @@ dv_server_cycle(dv_srv_conf_t *conf)
 
     if (conf->sc_daemon) {
         if (dv_process_daemonize() != DV_OK) {
-            fprintf(stderr, "Daemonize failed!\n");
+            DV_LOG(DV_LOG_ALERT, "Daemonize failed!\n");
             return -DV_ERROR;
         }
     }
@@ -429,6 +465,12 @@ dv_server_cycle(dv_srv_conf_t *conf)
     ret = dv_server_create_pidfile(conf->sc_pid_file);
     if (ret != DV_OK) {
         return ret;
+    }
+
+    ret = dv_init_setproctitle(dv_argv);
+    if (ret != DV_OK) {
+        DV_LOG(DV_LOG_ALERT, "Init set proc title failed!\n");
+        return -DV_ERROR;
     }
 
     if (conf->sc_single_process) {

@@ -106,5 +106,8 @@ main(int argc, char **argv)
         return -dv_server_send_signal(conf.sc_pid_file, cmd);
     }
 
+    dv_argc = argc;
+    dv_argv = argv;
+
     return -dv_server_cycle(&conf);
 }
