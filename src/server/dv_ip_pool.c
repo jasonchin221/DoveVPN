@@ -156,6 +156,7 @@ _dv_ip_pool_init(dv_ip_pool_t *pool, char *subnet_ip, dv_u32 len, int mask, int 
         return DV_ERROR;
     }
 
+    pool->ip_array = ip_array;
     INIT_LIST_HEAD(&pool->ip_list_head);
     for (i = 2; i < total_num + 3; i++, ip_array++) {
         /* skip x.x.x.255 */
@@ -181,12 +182,11 @@ _dv_ip_pool_init(dv_ip_pool_t *pool, char *subnet_ip, dv_u32 len, int mask, int 
         goto out;
     }
 
-    pool->ip_array = ip_array;
     return DV_OK;
 
 out:
-    if (ip_array != NULL) {
-        dv_free(ip_array);
+    if (pool->ip_array != NULL) {
+        dv_free(pool->ip_array);
     }
 
     DV_LOG(DV_LOG_NOTICE, "Init ip pool failed!\n");
