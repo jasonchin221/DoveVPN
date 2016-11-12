@@ -6,6 +6,7 @@
 #include "dv_signal.h"
 #include "dv_log.h"
 #include "dv_server_signal.h"
+#include "dv_server_cycle.h"
 
 static void dv_srv_signal_handler(int signo);
 
@@ -33,12 +34,23 @@ static dv_signal_t dv_srv_signals[] = {
     { 0, NULL, "", NULL }
 };
 
-static void dv_srv_signal_handler(int signo)
+static void
+dv_srv_signal_handler(int signo)
 {
     switch (signo) {
+        case SIGQUIT:
         case SIGINT:
             DV_LOG(DV_LOG_INFO, "Quiting!\n");
-            exit(0);
+            dv_quit = 1;
+            break;
+        case SIGTERM:
+            dv_terminate = 1;
+            break;
+        case SIGHUP:
+            dv_reconfigure = 1;
+            break;
+        default:
+            DV_LOG(DV_LOG_INFO, "Other signal(%d)!\n", signo);
             break;
     }
 }

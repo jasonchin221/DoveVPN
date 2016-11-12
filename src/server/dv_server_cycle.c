@@ -8,13 +8,16 @@
 #include "dv_log.h"
 #include "dv_trans.h"
 #include "dv_channel.h"
+#include "dv_mem.h"
 #include "dv_process.h"
+#include "dv_assert.h"
 #include "dv_socket.h"
 #include "dv_server_conf.h"
 #include "dv_server_core.h"
 #include "dv_server_socket.h"
 #include "dv_server_cycle.h"
 #include "dv_server_tun.h"
+#include "dv_server_signal.h"
 
 #include <signal.h>
 
@@ -24,6 +27,7 @@ sig_atomic_t dv_terminate;
 dv_u8 dv_process;
 dv_u8 dv_worker;
 dv_u8 dv_exiting;
+static char *dv_pid_file;
 
 dv_tun_t dv_srv_tun = {
     .tn_fd = -1,
@@ -61,6 +65,99 @@ dv_srv_create_and_set_tun(dv_tun_t *tun, int seq, int mask, int mtu,
 err:
     dv_tun_dev_destroy(tun);
     return ret;
+}
+
+static int
+dv_server_create_pidfile(char *file)
+{
+    FILE    *fp = NULL;
+    pid_t   pid;
+
+    dv_assert(dv_pid_file == NULL);
+
+    if (file[0] != '/') {
+        DV_LOG(DV_LOG_INFO, "File %s is not absolute path!!\n", file);
+        return DV_ERROR;
+    }
+
+    fp = fopen(file, "r");
+    fclose(fp);
+    if (fp != NULL) {
+        DV_LOG(DV_LOG_INFO, "Pid file %s already existed!!\n", file);
+        return DV_ERROR;
+    }
+
+    fp = fopen(file, "w");
+    if (fp != NULL) {
+        DV_LOG(DV_LOG_INFO, "Create pid file %s failed\n", file);
+        return DV_ERROR;
+    }
+
+    pid = getpid();
+    fprintf(fp, "%lu\n", (dv_ulong)pid);
+    fclose(fp);
+
+    dv_pid_file = dv_malloc(strlen(file) + 1);
+    if (dv_pid_file == NULL) {
+        unlink(file);
+        DV_LOG(DV_LOG_INFO, "Malloc failed\n");
+        return DV_ERROR;
+    }
+
+    strcpy(dv_pid_file, file);
+
+    return DV_OK;
+}
+
+static void
+dv_server_remove_pidfile(void)
+{
+    if (dv_pid_file == NULL) {
+        return;
+    }
+    unlink(dv_pid_file);
+    dv_free(dv_pid_file);
+}
+
+static pid_t
+dv_server_get_master_pid(char *file)
+{
+    FILE    *fp = NULL;
+    pid_t   pid;
+    size_t  rlen = 0;
+
+    if (file[0] != '/') {
+        DV_LOG(DV_LOG_INFO, "File %s is not absolute path!!\n", file);
+        return DV_INVALID_PID;
+    }
+
+    fp = fopen(file, "r");
+    if (fp != NULL) {
+        DV_LOG(DV_LOG_INFO, "Pid file %s already existed!!\n", file);
+        return DV_INVALID_PID;
+    }
+
+    rlen = fread(&pid, sizeof(pid), 1, fp);
+    fclose(fp);
+    if (rlen != 1) {
+        DV_LOG(DV_LOG_INFO, "Read file %s failed(rlen = %zu)!\n", file, rlen);
+        return DV_INVALID_PID;
+    }
+
+    return pid;
+}
+
+int 
+dv_server_send_signal(char *pid_file, char *cmd)
+{
+    pid_t   pid;
+
+    pid = dv_server_get_master_pid(pid_file);
+    if (pid == DV_INVALID_PID) {
+        return DV_ERROR;
+    }
+
+    return dv_srv_signal_process(cmd, pid);
 }
 
 static void
@@ -250,6 +347,7 @@ dv_master_process_cycle(dv_srv_conf_t *conf, dv_u32 cpu_num)
         sigsuspend(&set);
         if (dv_quit) {
             dv_reap_children(DV_CH_CMD_QUIT);
+            dv_server_remove_pidfile();
             dv_server_process_exit();
         }
 
@@ -259,6 +357,8 @@ dv_master_process_cycle(dv_srv_conf_t *conf, dv_u32 cpu_num)
 
         if (dv_terminate) {
             dv_reap_children(DV_CH_CMD_TERMINATE);
+            dv_server_remove_pidfile();
+            dv_server_process_exit();
         }
     }
 }
@@ -277,6 +377,11 @@ dv_server_cycle(dv_srv_conf_t *conf)
 
     memcpy(dv_route_net, conf->sc_route_net, sizeof(conf->sc_route_net));
     dv_route_mask = conf->sc_route_mask;
+
+    ret = dv_server_create_pidfile(conf->sc_pid_file);
+    if (ret != DV_OK) {
+        return ret;
+    }
 
     ret = dv_srv_init(conf);
     if (ret != DV_OK) {
@@ -306,6 +411,7 @@ dv_server_cycle(dv_srv_conf_t *conf)
     }
 
 out:
+    dv_server_remove_pidfile();
     _dv_server_process_exit();
     return ret;
 }

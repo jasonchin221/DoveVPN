@@ -29,6 +29,7 @@ dv_long_opts[] = {
 	{"help", 0, 0, 'H'},
 	{"debug", 0, 0, 'd'},
 	{"config", 0, 0, 'c'},
+	{"signal", 0, 0, 's'},
 	{0, 0, 0, 0}
 };
 
@@ -36,6 +37,7 @@ static const char *
 dv_options[] = {
 	"--config       -c	configure file\n",	
 	"--debug        -d	debug mode\n",	
+	"--signal       -s	send signal to master process\n",	
 	"--help         -H	Print help information\n",	
 };
 
@@ -53,12 +55,13 @@ dv_help(void)
 }
 
 static const char *
-dv_optstring = "Hdc:";
+dv_optstring = "Hdc:s:";
 
 int
 main(int argc, char **argv)  
 {
     char                    *cf = NULL;
+    char                    *cmd = NULL;
     dv_srv_conf_t           conf = {};
     int                     c = 0;
     int                     ret = 0;
@@ -78,6 +81,10 @@ main(int argc, char **argv)
                 dv_log_print = 1;
                 break;
 
+            case 's':
+                cmd = optarg;
+                break;
+
             default:
                 dv_help();
                 return -DV_ERROR;
@@ -93,6 +100,10 @@ main(int argc, char **argv)
     if (ret != DV_OK) {
         fprintf(stderr, "Parse %s failed!\n", cf);
         return -DV_ERROR;
+    }
+
+    if (cmd != NULL) {
+        return -dv_server_send_signal(conf.sc_pid_file, cmd);
     }
 
     if (conf.sc_daemon) {

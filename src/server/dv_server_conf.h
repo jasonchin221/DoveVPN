@@ -11,6 +11,7 @@ typedef struct _dv_srv_conf_t {
     int                 sc_single_process;
     int                 sc_tun_bufsize;
     int                 sc_ssl_bufsize;
+    char                sc_pid_file[DV_CONF_STR_LEN];
     char                sc_listen_ip[DV_IP_ADDRESS_LEN];
     char                sc_subnet_ip[DV_IP_ADDRESS_LEN];
     char                sc_route_net[DV_IP_ADDRESS_LEN];

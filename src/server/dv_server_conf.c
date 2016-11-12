@@ -19,10 +19,12 @@
 #define DV_SRV_CONF_CA              "ca"
 #define DV_SRV_CONF_PROCESSES       "processes"
 #define DV_SRV_CONF_DAEMON          "daemon"
+#define DV_SRV_CONF_SINGLE_PROCESS  "single-process"
+#define DV_SRV_CONF_PID             "pid-file"
 #define DV_SRV_CONF_PROTO           "proto"
 #define DV_SRV_CONF_CONNECTION      "connection"
-#define DV_SRV_CONF_TUN_BUFFER_SIZE "tun_buffer_size"
-#define DV_SRV_CONF_SSL_BUFFER_SIZE "ssl_buffer_size"
+#define DV_SRV_CONF_TUN_BUFFER_SIZE "tun-buffer-size"
+#define DV_SRV_CONF_SSL_BUFFER_SIZE "ssl-buffer-size"
 
 static dv_srv_conf_t dv_srv_conf;
 
@@ -95,6 +97,22 @@ static dv_conf_parse_t dv_srv_conf_processes[] = {
         .cp_type = json_type_int,
         .cp_necessary = DV_TRUE,
         .cp_parse = dv_conf_parse_int,
+    },
+    {
+        .cp_name = DV_SRV_CONF_SINGLE_PROCESS,
+        .cp_len = sizeof(dv_srv_conf.sc_single_process),
+        .cp_offset = dv_offsetof(dv_srv_conf_t, sc_single_process),
+        .cp_type = json_type_int,
+        .cp_necessary = DV_FALSE,
+        .cp_parse = dv_conf_parse_int,
+    },
+    {
+        .cp_name = DV_SRV_CONF_PID,
+        .cp_len = sizeof(dv_srv_conf.sc_pid_file),
+        .cp_offset = dv_offsetof(dv_srv_conf_t, sc_pid_file),
+        .cp_type = json_type_string,
+        .cp_necessary = DV_TRUE,
+        .cp_parse = dv_conf_parse_str,
     },
 };
 
