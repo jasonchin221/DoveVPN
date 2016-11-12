@@ -73,6 +73,6 @@ dv_ip_datalen(void *h, size_t len)
     return sizeof(*ip6) + DV_NTOHS(ip6->ip6_ctlun.ip6_un1.ip6_un1_plen);
 }
 
-extern dv_u32 dv_get_cpu_num(void);
+extern long dv_get_cpu_num(void);
 
 #endif

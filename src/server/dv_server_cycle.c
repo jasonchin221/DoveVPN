@@ -312,7 +312,7 @@ dv_start_worker_processes(void *cycle, dv_u32 child_num)
 {
     int             i = 0;
 
-    for (i = 0; i < 1/* child_num */; i++) {
+    for (i = 0; i < child_num; i++) {
         /* Fork process */
         dv_spawn_process(cycle, dv_worker_process_cycle,
                 (void *)&i, "worker process");
