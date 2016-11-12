@@ -81,14 +81,14 @@ dv_server_create_pidfile(char *file)
     }
 
     fp = fopen(file, "r");
-    fclose(fp);
     if (fp != NULL) {
         DV_LOG(DV_LOG_INFO, "Pid file %s already existed!!\n", file);
+        fclose(fp);
         return DV_ERROR;
     }
 
     fp = fopen(file, "w");
-    if (fp != NULL) {
+    if (fp == NULL) {
         DV_LOG(DV_LOG_INFO, "Create pid file %s failed\n", file);
         return DV_ERROR;
     }
