@@ -94,7 +94,7 @@ dv_spawn_process(void *cycle, dv_spawn_proc_pt proc, void *data, char *name)
         return DV_INVALID_PID;
     }
 
-    DV_LOG(DV_LOG_DEBUG, "pc_channel %d:%d", dv_processes[s].pc_channel[0],
+    DV_LOG(DV_LOG_DEBUG, "pc_channel %d:%d\n", dv_processes[s].pc_channel[0],
             dv_processes[s].pc_channel[1]);
 
     if (fcntl(dv_processes[s].pc_channel[0], F_SETFL, O_NONBLOCK) == -1) {
@@ -158,7 +158,7 @@ dv_spawn_process(void *cycle, dv_spawn_proc_pt proc, void *data, char *name)
         break;
     }
 
-    DV_LOG(DV_LOG_NOTICE, "Start %s %d", name, (int)pid);
+    DV_LOG(DV_LOG_NOTICE, "Start %s %d\n", name, (int)pid);
 
     dv_processes[s].pc_pid = pid;
     //dv_processes[s].proc = proc;

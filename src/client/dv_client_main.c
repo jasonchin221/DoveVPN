@@ -17,6 +17,7 @@
 #include "dv_errno.h"
 #include "dv_lib.h"
 #include "dv_proto.h"
+#include "dv_process.h"
 #include "dv_client_conf.h"
 #include "dv_client_process.h"
 

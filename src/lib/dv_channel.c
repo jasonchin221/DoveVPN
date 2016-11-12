@@ -4,6 +4,7 @@
 #include "dv_log.h"
 #include "dv_event.h"
 #include "dv_socket.h"
+#include "dv_errno.h"
 
 static dv_event_t dv_channel_rev;
 
@@ -11,11 +12,11 @@ void
 dv_close_channel(int *fd)
 {
     if (close(fd[0]) == -1) {
-        DV_LOG(DV_LOG_ALERT, "close() channel failed");
+        DV_LOG(DV_LOG_ALERT, "close() channel failed\n");
     }
 
     if (close(fd[1]) == -1) {
-        DV_LOG(DV_LOG_ALERT, "close() channel failed");
+        DV_LOG(DV_LOG_ALERT, "close() channel failed\n");
     }
 }
 
@@ -24,6 +25,9 @@ dv_add_channel_read_event(int fd, dv_event_handler handler)
 {
     dv_event_conn_set(&dv_channel_rev, NULL, fd, handler,
         dv_event_set_persist_read);
+    if (dv_event_add(&dv_channel_rev) != DV_OK) {
+        DV_LOG(DV_LOG_ALERT, "Add channel read event failed\n");
+    }
 }
 
 void

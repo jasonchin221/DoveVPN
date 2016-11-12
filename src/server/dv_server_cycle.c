@@ -1,5 +1,6 @@
 #include <unistd.h>
 #include <string.h>
+#include <stdlib.h>
 
 #include "dv_errno.h"
 #include "dv_ip_pool.h"
@@ -123,28 +124,42 @@ static pid_t
 dv_server_get_master_pid(char *file)
 {
     FILE    *fp = NULL;
-    pid_t   pid;
+    char    *pid = NULL;
+    size_t  slen = 0;
     size_t  rlen = 0;
 
     if (file[0] != '/') {
-        DV_LOG(DV_LOG_INFO, "File %s is not absolute path!!\n", file);
+        DV_LOG(DV_LOG_INFO, "File %s is not absolute path!\n", file);
         return DV_INVALID_PID;
     }
 
     fp = fopen(file, "r");
-    if (fp != NULL) {
-        DV_LOG(DV_LOG_INFO, "Pid file %s already existed!!\n", file);
+    if (fp == NULL) {
+        DV_LOG(DV_LOG_INFO, "Open file %s failed!\n", file);
         return DV_INVALID_PID;
     }
 
-    rlen = fread(&pid, sizeof(pid), 1, fp);
+    fseek(fp, 0, SEEK_END);
+    slen = ftell(fp);
+    fseek(fp, 0, SEEK_SET);
+
+    pid = dv_calloc(slen);
+    if (pid == NULL) {
+        DV_LOG(DV_LOG_INFO, "Malloc failed!\n");
+        fclose(fp);
+        return DV_INVALID_PID;
+    }
+
+    rlen = fread(pid, slen, 1, fp);
     fclose(fp);
     if (rlen != 1) {
         DV_LOG(DV_LOG_INFO, "Read file %s failed(rlen = %zu)!\n", file, rlen);
         return DV_INVALID_PID;
     }
 
-    return pid;
+    pid[slen - 1] = 0;
+
+    return atoi(pid);
 }
 
 int 
@@ -154,6 +169,7 @@ dv_server_send_signal(char *pid_file, char *cmd)
 
     pid = dv_server_get_master_pid(pid_file);
     if (pid == DV_INVALID_PID) {
+        DV_LOG(DV_LOG_INFO, "Get pid from file %s failed!\n", pid_file);
         return DV_ERROR;
     }
 
@@ -184,6 +200,7 @@ dv_worker_channel_read_handler(int sock, short event, void *arg)
     dv_channel_t    ch = {};
     ssize_t         rlen = 0;
 
+    DV_LOG(DV_LOG_INFO, "Channel!\n");
     while (1) {
         rlen = dv_sk_recv(sock, &ch, sizeof(ch));
         if (rlen == 0) {
@@ -253,6 +270,7 @@ dv_worker_process_init(int worker)
         DV_LOG(DV_LOG_ALERT, "Close() channel failed\n");
     }
 
+    DV_LOG(DV_LOG_INFO, "Add read channel!\n");
     dv_add_channel_read_event(dv_channel, dv_worker_channel_read_handler);
 }
 
@@ -303,13 +321,19 @@ dv_reap_children(int cmd)
 {
     dv_channel_t    ch = {};
     int             i = 0;
+    int             wlen = 0;
 
     ch.ch_command = cmd;
     for (i = 0; i < dv_last_process; i++) {
         if (dv_processes[i].pc_pid == -1) {
             continue;
         }
-        dv_write_channel(dv_processes[i].pc_channel[0], &ch, sizeof(ch));
+        wlen = dv_write_channel(dv_processes[i].pc_channel[0],
+                &ch, sizeof(ch));
+        DV_LOG(DV_LOG_ALERT, "Write channel %d!\n", wlen);
+        if (wlen != sizeof(ch)) {
+            DV_LOG(DV_LOG_ALERT, "Write channel failed!\n");
+        }
     }
 }
 
@@ -378,11 +402,6 @@ dv_server_cycle(dv_srv_conf_t *conf)
     memcpy(dv_route_net, conf->sc_route_net, sizeof(conf->sc_route_net));
     dv_route_mask = conf->sc_route_mask;
 
-    ret = dv_server_create_pidfile(conf->sc_pid_file);
-    if (ret != DV_OK) {
-        return ret;
-    }
-
     ret = dv_srv_init(conf);
     if (ret != DV_OK) {
         goto out;
@@ -398,6 +417,18 @@ dv_server_cycle(dv_srv_conf_t *conf)
     if (ret != DV_OK) {
         DV_LOG(DV_LOG_INFO, "Init ssl socket failed!\n");
         goto out;
+    }
+
+    if (conf->sc_daemon) {
+        if (dv_process_daemonize() != DV_OK) {
+            fprintf(stderr, "Daemonize failed!\n");
+            return -DV_ERROR;
+        }
+    }
+
+    ret = dv_server_create_pidfile(conf->sc_pid_file);
+    if (ret != DV_OK) {
+        return ret;
     }
 
     if (conf->sc_single_process) {

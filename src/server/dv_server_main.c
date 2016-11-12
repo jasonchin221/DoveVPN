@@ -106,12 +106,5 @@ main(int argc, char **argv)
         return -dv_server_send_signal(conf.sc_pid_file, cmd);
     }
 
-    if (conf.sc_daemon) {
-        if (dv_process_daemonize() != DV_OK) {
-            fprintf(stderr, "Daemonize failed!\n");
-            return -DV_ERROR;
-        }
-    }
-
     return -dv_server_cycle(&conf);
 }
