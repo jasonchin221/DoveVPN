@@ -10,6 +10,9 @@
 #include "dv_types.h"
 #include "dv_ip_pool.h"
 
+#define DV_SRV_CONN_FLAG_POOL       0x01
+#define DV_SRV_CONN_FLAG_MEM        0x02
+
 typedef struct _dv_srv_conn_t {
     struct list_head    sc_list_head;
     void                *sc_ssl;
@@ -32,7 +35,9 @@ typedef struct _dv_srv_conn_pool_t {
 
 extern int dv_srv_conn_pool_init(dv_u32 max_conn, size_t bufsize);
 extern void dv_srv_conn_pool_destroy(void);
-extern dv_srv_conn_t *dv_srv_conn_alloc(int fd, void *ssl);
-extern void dv_srv_conn_free(dv_srv_conn_t *conn);
+extern dv_srv_conn_t *dv_srv_conn_pool_alloc(int fd, void *ssl);
+extern void dv_srv_conn_pool_free(dv_srv_conn_t *conn);
+extern dv_srv_conn_t *dv_srv_conn_mem_alloc(int fd, void *ssl, size_t bufsize);
+extern void dv_srv_conn_mem_free(dv_srv_conn_t *conn);
 
 #endif

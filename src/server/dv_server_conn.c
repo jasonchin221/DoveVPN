@@ -10,6 +10,7 @@
 #include "dv_log.h"
 #include "dv_assert.h"
 #include "dv_lib.h"
+#include "dv_mem.h"
 #include "dv_server_conn.h"
 #include "dv_server_core.h"
 
@@ -75,8 +76,36 @@ out:
     return DV_ERROR;
 }
 
+static void
+dv_srv_conn_pool_release(void *conn)
+{
+    dv_srv_conn_pool_free(conn);
+}
+
+static void
+dv_srv_conn_init(dv_srv_conn_t *conn, int fd, void *ssl, dv_u32 flag)
+{
+    dv_event_t          *rev = NULL;
+    dv_event_t          *wev = NULL;
+
+    conn->sc_fd = fd;
+    conn->sc_flags = 0;
+    conn->sc_ip = NULL;
+    conn->sc_ssl = ssl;
+
+    rev = &conn->sc_rev;
+    wev = &conn->sc_wev;
+    memset(rev, 0, sizeof(*rev));
+    memset(wev, 0, sizeof(*wev));
+    rev->et_conn = wev->et_conn = conn;
+    rev->et_conn_free = wev->et_conn_free = dv_srv_conn_pool_release;
+
+    dv_buf_reset(&conn->sc_rbuf);
+    dv_buf_reset(&conn->sc_wbuf);
+}
+
 dv_srv_conn_t *
-dv_srv_conn_alloc(int fd, void *ssl)
+dv_srv_conn_pool_alloc(int fd, void *ssl)
 {
     dv_srv_conn_t       *conn = NULL;
     struct list_head    *list = NULL;
@@ -95,15 +124,9 @@ dv_srv_conn_alloc(int fd, void *ssl)
     list_add_tail(list, &dv_srv_conn_pool->cp_list_used);
     dv_srv_conn_pool->cp_used_num++;
     pthread_spin_unlock(&dv_srv_conn_pool->cp_lock);
+
     conn = dv_container_of(list, dv_srv_conn_t, sc_list_head);
-    conn->sc_fd = fd;
-    conn->sc_flags = 0;
-    conn->sc_ip = NULL;
-    conn->sc_ssl = ssl;
-    memset(&conn->sc_rev, 0, sizeof(conn->sc_rev));
-    memset(&conn->sc_wev, 0, sizeof(conn->sc_wev));
-    dv_buf_reset(&conn->sc_rbuf);
-    dv_buf_reset(&conn->sc_wbuf);
+    dv_srv_conn_init(conn, fd, ssl, DV_SRV_CONN_FLAG_POOL);
 
     return conn;
 }
@@ -129,7 +152,7 @@ dv_srv_conn_destroy(dv_srv_conn_t *conn)
 }
 
 void
-dv_srv_conn_free(dv_srv_conn_t *conn)
+dv_srv_conn_pool_free(dv_srv_conn_t *conn)
 {
     dv_assert(dv_srv_conn_pool != NULL);
 
@@ -140,6 +163,29 @@ dv_srv_conn_free(dv_srv_conn_t *conn)
     list_add_tail(&conn->sc_list_head, &dv_srv_conn_pool->cp_list_free);
     dv_srv_conn_pool->cp_used_num--;
     pthread_spin_unlock(&dv_srv_conn_pool->cp_lock);
+}
+
+dv_srv_conn_t *
+dv_srv_conn_mem_alloc(int fd, void *ssl, size_t bufsize)
+{
+    dv_srv_conn_t       *conn = NULL;
+
+    conn = dv_calloc(sizeof(*conn) + 2*bufsize);
+    if (conn == NULL) {
+        return NULL;
+    }
+
+    dv_buf_init(&conn->sc_rbuf, conn + 1, bufsize);
+    dv_buf_init(&conn->sc_wbuf, (dv_u8 *)(conn + 1) + bufsize, bufsize);
+    dv_srv_conn_init(conn, fd, ssl, DV_SRV_CONN_FLAG_POOL);
+
+    return conn;
+}
+
+void
+dv_srv_conn_mem_free(dv_srv_conn_t *conn)
+{
+    dv_srv_conn_destroy(conn);
 }
 
 void
@@ -157,7 +203,7 @@ dv_srv_conn_pool_destroy(void)
     pthread_spin_lock(&dv_srv_conn_pool->cp_lock);
     list_for_each_safe(pos, n, &dv_srv_conn_pool->cp_list_used) {
         conn = dv_container_of(pos, dv_srv_conn_t, sc_list_head);
-        dv_srv_conn_free(conn);
+        dv_srv_conn_pool_free(conn);
     }
     pthread_spin_unlock(&dv_srv_conn_pool->cp_lock);
 

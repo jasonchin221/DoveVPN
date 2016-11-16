@@ -149,6 +149,10 @@ dv_event_destroy(dv_event_t *event)
         return DV_ERROR;
     }
 
+    if (event->et_flags & DV_EVENT_FLAGS_FREED) {
+        return DV_ERROR;
+    }
+
     dv_event_del(event);
 
     if (event->et_ev) {
@@ -166,6 +170,8 @@ dv_event_destroy(dv_event_t *event)
     if (event->et_flags & DV_EVENT_FLAGS_NEED_FREE) {
         dv_free(event);
     }
+
+    event->et_flags |= DV_EVENT_FLAGS_FREED;
 
     return DV_OK;
 }

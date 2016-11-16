@@ -13,6 +13,7 @@
 #include "dv_server_core.h"
 #include "dv_server_tun.h"
 #include "dv_server_cycle.h"
+#include "dv_server_conn.h"
 
 dv_u8 dv_route_net[DV_IP_ADDRESS_LEN];
 size_t dv_route_mask;
@@ -25,7 +26,7 @@ dv_srv_tun_to_ssl(int sock, short event, void *arg)
     dv_trans_buf_t          *tbuf = &dv_trans_buf;
     dv_event_t              *wev = NULL;
     dv_buffer_t             *wbuf = NULL;
-    dv_sk_conn_t            *conn = NULL;
+    dv_srv_conn_t           *conn = NULL;
     const dv_proto_suite_t  *suite = dv_srv_ssl_proto_suite;
     struct iphdr            *ip4 = NULL;
     struct ip6_hdr          *ip6 = NULL;
@@ -60,7 +61,7 @@ dv_srv_tun_to_ssl(int sock, short event, void *arg)
         return;
     }
 
-    wbuf = conn->sc_buf;
+    wbuf = &conn->sc_wbuf;
     ssl = conn->sc_ssl;
     ret = dv_trans_data_to_ssl(tun_fd, ssl, wbuf, suite, tbuf, rlen);
     if (ret == -DV_EWANT_WRITE) {
@@ -75,8 +76,8 @@ static void
 dv_srv_buf_to_tun(int sock, short event, void *arg)
 {
     dv_event_t              *ev = arg; 
-    dv_sk_conn_t            *conn = ev->et_conn;
-    dv_buffer_t             *wbuf = conn->sc_buf;
+    dv_srv_conn_t           *conn = ev->et_conn;
+    dv_buffer_t             *wbuf = &conn->sc_wbuf;
     size_t                  ip_tlen = 0;
     int                     data_len = 0;
     int                     tun_fd = dv_srv_tun.tn_fd;
@@ -94,47 +95,31 @@ dv_srv_buf_to_tun(int sock, short event, void *arg)
 }
 
 int
-dv_srv_tun_ev_create(int tun_fd, size_t buf_size)
+dv_srv_tun_ev_create(int tun_fd, size_t bufsize)
 {
+    dv_srv_conn_t   *conn = NULL;
     dv_event_t      *rev = NULL;
     dv_event_t      *wev = NULL;
-    dv_sk_conn_t    *conn = NULL;
 
     dv_assert(dv_srv_tun_rev == NULL && dv_srv_tun_wev == NULL);
 
-    rev = dv_srv_tun_rev = dv_event_create();
-    if (rev == NULL) {
-        DV_LOG(DV_LOG_INFO, "Create tun rev failed!\n");
+    conn = dv_srv_conn_mem_alloc(tun_fd, NULL, bufsize);
+    if (conn == NULL) {
+        DV_LOG(DV_LOG_INFO, "Create tun conn failed!\n");
         return DV_ERROR;
     }
 
+    rev = dv_srv_tun_rev = &conn->sc_rev;
     rev->et_handler = dv_srv_tun_to_ssl;
-    DV_LOG(DV_LOG_INFO, "Tun add rev!tun_fd = %d\n", tun_fd);
     dv_event_set_persist_read(tun_fd, rev);
     if (dv_event_add(rev) != DV_OK) {
         DV_LOG(DV_LOG_INFO, "Tun add rev failed!\n");
         return DV_ERROR;
     }
 
-    wev = dv_srv_tun_wev = dv_event_create();
-    if (wev == NULL) {
-        dv_srv_tun_ev_destroy();
-        DV_LOG(DV_LOG_INFO, "Create tun wev failed!\n");
-        return DV_ERROR;
-    }
-
+    wev = dv_srv_tun_wev = &conn->sc_wev;
     wev->et_handler = dv_srv_buf_to_tun;
     dv_event_set_write(tun_fd, wev);
-
-    conn = dv_sk_conn_alloc(buf_size);
-    if (conn == NULL) {
-        dv_srv_tun_ev_destroy();
-        DV_LOG(DV_LOG_INFO, "Alloc tun connection failed!\n");
-        return DV_ERROR;
-    }
-    rev->et_conn_free = wev->et_conn_free = dv_sk_conn_free;
-    wev->et_conn = dv_sk_conn_get(conn);
-    rev->et_conn = wev->et_conn = conn;
 
     return DV_OK;
 }

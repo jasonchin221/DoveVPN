@@ -7,85 +7,20 @@
 #include "dv_event.h"
 #include "dv_errno.h"
 #include "dv_mem.h"
-#include "dv_server_socket.h"
-#include "dv_server_core.h"
 #include "dv_msg.h"
 #include "dv_ip_pool.h"
-#include "dv_server_cycle.h"
 #include "dv_trans.h"
 #include "dv_log.h"
+#include "dv_server_cycle.h"
+#include "dv_server_socket.h"
+#include "dv_server_core.h"
 #include "dv_server_tun.h"
+#include "dv_server_conn.h"
 
 #define DV_SERVER_LISTEN_NUM    100
 #define DV_SERVER_BUF_SIZE      16384
 
 static void dv_srv_ssl_to_tun(int sock, short event, void *arg);
-
-dv_sk_conn_t *
-dv_sk_conn_alloc(size_t buf_size)
-{
-    dv_sk_conn_t    *conn = NULL;
-
-    if (buf_size > 65535) {
-        return NULL;
-    }
-
-    conn = dv_calloc(sizeof(*conn));
-    if (conn == NULL) {
-        return NULL;
-    }
-
-    conn->sc_buf = dv_buf_alloc(buf_size);
-    if (conn->sc_buf == NULL) {
-        goto out;
-    }
-
-    conn->sc_ref = 1;
-
-    return conn;
-out:
-    dv_sk_conn_free(conn);
-    return NULL;
-}
-
-dv_sk_conn_t *
-dv_sk_conn_get(dv_sk_conn_t *conn)
-{
-    conn->sc_ref++;
-
-    return conn;
-}
-
-void 
-dv_sk_conn_free(void *conn)
-{
-    dv_sk_conn_t            *c = conn;
-    void                    *ssl = c->sc_ssl;
-    const dv_proto_suite_t  *suite = dv_srv_ssl_proto_suite;
-
-    if (c == NULL) {
-        return;
-    }
-
-    if (--c->sc_ref != 0) {
-        return;
-    }
-
-    if (c->sc_ip != NULL) {
-        dv_subnet_ip_free(c->sc_ip);
-    }
-
-    if (c->sc_buf != NULL) {
-        dv_buf_free(c->sc_buf);
-    }
-
-    if (c->sc_ssl != NULL) {
-        suite->ps_shutdown(ssl);
-        suite->ps_ssl_free(ssl);
-    }
-
-    dv_free(c);
-}
 
 static dv_event_t *
 dv_srv_ssl_add_listenning(char *ip, dv_event_handler callback, int port)
@@ -127,13 +62,7 @@ dv_srv_ssl_add_listenning(char *ip, dv_event_handler callback, int port)
 static int
 dv_srv_ssl_err_handler(int sock, dv_event_t *ev, const dv_proto_suite_t *suite)
 {
-    dv_sk_conn_t            *conn = ev->et_conn;
-    dv_event_t              *wev = conn->sc_wev;
-
-    close(sock);
     dv_event_destroy(ev);
-    dv_event_del(wev);
-    dv_event_destroy(wev);
 
     return DV_ERROR;
 }
@@ -143,11 +72,11 @@ dv_srv_ssl_to_tun(int sock, short event, void *arg)
 {
     dv_event_t              *ev = arg; 
     dv_event_t              *peer_ev = ev->et_peer_ev; 
-    dv_sk_conn_t            *conn = ev->et_conn;
-    dv_sk_conn_t            *peer_conn = peer_ev->et_conn;
+    dv_srv_conn_t           *conn = ev->et_conn;
+    dv_srv_conn_t           *peer_conn = peer_ev->et_conn;
     void                    *ssl = conn->sc_ssl;
     const dv_proto_suite_t  *suite = dv_srv_ssl_proto_suite;
-    dv_buffer_t             *rbuf = peer_conn->sc_buf;
+    dv_buffer_t             *rbuf = &peer_conn->sc_rbuf;
     int                     tun_fd = dv_srv_tun.tn_fd;
 
     DV_LOG(DV_LOG_INFO, "SSL data in!\n");
@@ -158,9 +87,9 @@ dv_srv_ssl_to_tun(int sock, short event, void *arg)
 static int
 dv_srv_ssl_send_data(int sock, dv_event_t *ev, const dv_proto_suite_t *suite)
 {
-    dv_sk_conn_t            *conn = ev->et_conn;
-    dv_buffer_t             *wbuf = conn->sc_buf;
-    dv_event_t              *wev = conn->sc_wev;
+    dv_srv_conn_t           *conn = ev->et_conn;
+    dv_buffer_t             *wbuf = &conn->sc_wbuf;
+    dv_event_t              *wev = &conn->sc_wev;
     void                    *ssl = conn->sc_ssl;
     int                     ret = DV_OK;
 
@@ -195,8 +124,8 @@ dv_srv_ssl_send_data(int sock, dv_event_t *ev, const dv_proto_suite_t *suite)
 static int
 dv_srv_ssl_handshake_done(int sock, dv_event_t *ev, const dv_proto_suite_t *suite)
 {
-    dv_sk_conn_t            *conn = ev->et_conn;
-    dv_buffer_t             *wbuf = conn->sc_buf;
+    dv_srv_conn_t            *conn = ev->et_conn;
+    dv_buffer_t             *wbuf = &conn->sc_wbuf;
     void                    *ssl = conn->sc_ssl;
     dv_subnet_ip_t          *ip = NULL;
     size_t                  mlen = 0;
@@ -225,7 +154,7 @@ dv_srv_ssl_handshake_done(int sock, dv_event_t *ev, const dv_proto_suite_t *suit
     }
 
     wbuf->bf_tail += mlen;
-    ip->si_wev = conn->sc_wev;
+    ip->si_wev = &conn->sc_wev;
 
     dv_ip_hash_add(ip);
 
@@ -244,8 +173,7 @@ dv_srv_ssl_handshake(int sock, short event, void *arg)
 {
     const dv_proto_suite_t  *suite = dv_srv_ssl_proto_suite;
     dv_event_t              *ev = arg; 
-    dv_event_t              *wev = NULL; 
-    dv_sk_conn_t            *conn = ev->et_conn;
+    dv_srv_conn_t            *conn = ev->et_conn;
     void                    *ssl = NULL;
     int                     ret = DV_OK;
 
@@ -281,19 +209,15 @@ dv_srv_ssl_handshake(int sock, short event, void *arg)
     }
 
 out:
-    wev = conn->sc_wev;
-    dv_event_destroy(wev);
     dv_event_destroy(ev);
-    close(sock);
 }
 
 static void
 dv_srv_buf_to_ssl(int sock, short event, void *arg)
 {
     dv_event_t              *ev = arg; 
-    dv_sk_conn_t            *conn = ev->et_conn;
-    dv_event_t              *rev = conn->sc_rev; 
-    dv_buffer_t             *wbuf = conn->sc_buf;
+    dv_srv_conn_t           *conn = ev->et_conn;
+    dv_buffer_t             *wbuf = &conn->sc_wbuf;
     void                    *ssl = conn->sc_ssl;
     const dv_proto_suite_t  *suite = dv_srv_ssl_proto_suite;
     int                     ret = DV_OK;
@@ -311,8 +235,6 @@ dv_srv_buf_to_ssl(int sock, short event, void *arg)
     }
 
     dv_event_destroy(ev);
-    dv_event_del(rev);
-    dv_event_destroy(rev);
 }
 
 static void
@@ -323,7 +245,7 @@ _dv_srv_ssl_accept(int sock, short event, void *arg, struct sockaddr *addr,
     void                    *ctx = dv_srv_ssl_ctx;
     dv_event_t              *rev = NULL; 
     dv_event_t              *wev = NULL; 
-    dv_sk_conn_t            *conn = NULL;
+    dv_srv_conn_t           *conn = NULL;
     void                    *ssl = NULL;
     int                     accept_fd = 0;
     int                     ret = DV_OK;
@@ -340,12 +262,6 @@ _dv_srv_ssl_accept(int sock, short event, void *arg, struct sockaddr *addr,
         return;
     }
 
-    conn = dv_sk_conn_alloc(DV_SERVER_BUF_SIZE);
-    if (conn == NULL) {
-        DV_LOG(DV_LOG_INFO, "Alloc conn failed!\n");
-        goto out;
-    }
-
     ssl = suite->ps_ssl_new(ctx);
     if (ssl == NULL) {
         DV_LOG(DV_LOG_INFO, "New ssl failed!\n");
@@ -353,28 +269,19 @@ _dv_srv_ssl_accept(int sock, short event, void *arg, struct sockaddr *addr,
     }
     /* 将连接用户的 socket 加入到 SSL */
     suite->ps_set_fd(ssl, accept_fd);
-    rev = dv_event_create();
-    if (rev == NULL) {
-        DV_LOG(DV_LOG_INFO, "Create event failed!\n");
+
+    conn = dv_srv_conn_pool_alloc(accept_fd, ssl);
+    if (conn == NULL) {
+        DV_LOG(DV_LOG_INFO, "Create conn failed!\n");
         goto out;
     }
 
-    conn->sc_ssl = ssl;
-    conn->sc_rev = rev;
-    rev->et_conn = conn;
-    rev->et_conn_free = dv_sk_conn_free;
+    rev = &conn->sc_rev;
+    wev = &conn->sc_wev;
+
     rev->et_peer_ev = dv_srv_tun_wev;
-    wev = dv_event_create();
-    if (wev == NULL) {
-        DV_LOG(DV_LOG_INFO, "Create event failed!\n");
-        goto out;
-    }
-
-    wev->et_conn = dv_sk_conn_get(conn);
-    wev->et_conn_free = dv_sk_conn_free;
     wev->et_handler = dv_srv_buf_to_ssl;
     dv_event_set_write(accept_fd, wev);
-    conn->sc_wev = wev;
 
     /* 建立 SSL 连接 */
     ret = suite->ps_accept(ssl);
@@ -385,7 +292,7 @@ _dv_srv_ssl_accept(int sock, short event, void *arg, struct sockaddr *addr,
             ret = dv_srv_ssl_handshake_done(accept_fd, rev, suite);
             if (ret == DV_ERROR) {
                 DV_LOG(DV_LOG_INFO, "Handshake done proc failed!\n");
-                goto free_ev;
+                goto free_conn;
             }
             return;
         case -DV_EWANT_READ:
@@ -397,12 +304,12 @@ _dv_srv_ssl_accept(int sock, short event, void *arg, struct sockaddr *addr,
             dv_event_set_write(accept_fd, rev);
             break;
         default:
-            goto free_ev;
+            goto free_conn;
     }
 
     if (dv_event_add(rev) != DV_OK) {
         DV_LOG(DV_LOG_INFO, "Add rev failed!\n");
-        goto free_ev;
+        goto free_conn;
     }
     return;
 out:
@@ -410,16 +317,13 @@ out:
         suite->ps_ssl_free(ssl);
     }
 
-free_ev:
-    if (wev != NULL) {
-        dv_event_destroy(wev);
-    }
-
-    if (rev != NULL) {
-        dv_event_destroy(rev);
-    }
-
     close(accept_fd);
+    return;
+
+free_conn:
+    if (conn != NULL) {
+        dv_srv_conn_pool_free(conn);
+    }
 }
 
 static void
