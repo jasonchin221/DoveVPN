@@ -32,7 +32,7 @@ typedef struct _dv_srv_conn_pool_t {
 
 extern int dv_srv_conn_pool_init(dv_u32 max_conn, size_t bufsize);
 extern void dv_srv_conn_pool_destroy(void);
-extern dv_srv_conn_t *dv_srv_conn_alloc(void);
+extern dv_srv_conn_t *dv_srv_conn_alloc(int fd, void *ssl);
 extern void dv_srv_conn_free(dv_srv_conn_t *conn);
 
 #endif

@@ -73,11 +73,10 @@ out:
 
     DV_LOG(DV_LOG_NOTICE, "Init SHM failed!\n");
     return DV_ERROR;
-
 }
 
 dv_srv_conn_t *
-dv_srv_conn_alloc(void)
+dv_srv_conn_alloc(int fd, void *ssl)
 {
     dv_srv_conn_t       *conn = NULL;
     struct list_head    *list = NULL;
@@ -97,10 +96,10 @@ dv_srv_conn_alloc(void)
     dv_srv_conn_pool->cp_used_num++;
     pthread_spin_unlock(&dv_srv_conn_pool->cp_lock);
     conn = dv_container_of(list, dv_srv_conn_t, sc_list_head);
-    conn->sc_fd = -1;
+    conn->sc_fd = fd;
     conn->sc_flags = 0;
     conn->sc_ip = NULL;
-    conn->sc_ssl = NULL;
+    conn->sc_ssl = ssl;
     memset(&conn->sc_rev, 0, sizeof(conn->sc_rev));
     memset(&conn->sc_wev, 0, sizeof(conn->sc_wev));
     dv_buf_reset(&conn->sc_rbuf);
@@ -121,9 +120,11 @@ dv_srv_conn_destroy(dv_srv_conn_t *conn)
     if (conn->sc_ssl) {
         suite->ps_shutdown(conn->sc_ssl);
         suite->ps_ssl_free(conn->sc_ssl);
+        conn->sc_ssl = NULL;
     }
     if (conn->sc_fd >= 0) {
         close(conn->sc_fd);
+        conn->sc_fd = -1;
     }
 }
 

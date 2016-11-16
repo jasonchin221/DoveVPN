@@ -149,6 +149,8 @@ dv_event_destroy(dv_event_t *event)
         return DV_ERROR;
     }
 
+    dv_event_del(event);
+
     if (event->et_ev) {
         event_free(event->et_ev);
     }
