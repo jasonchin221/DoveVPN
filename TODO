@@ -1,4 +1,3 @@
 Server:
-1. Multi process
-2. CPU bind
-3. Event, connection memory pool
+1. Event, connection memory pool
+2. SSL recv buffer

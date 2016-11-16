@@ -13,6 +13,7 @@
 #include "dv_process.h"
 #include "dv_assert.h"
 #include "dv_socket.h"
+#include "dv_cpuaffinity.h"
 #include "dv_setproctitle.h"
 #include "dv_server_conf.h"
 #include "dv_server_core.h"
@@ -301,6 +302,13 @@ dv_worker_process_cycle(void *cycle, void *data)
     if (ret != DV_OK) {
         dv_server_process_exit();
     }
+
+    ret = dv_cpuaffinity_set(worker);
+    if (ret != DV_OK) {
+        DV_LOG(DV_LOG_INFO, "Set cpuaffinity failed!\n");
+        dv_server_process_exit();
+    }
+
     /* Event loop */
     DV_LOG(DV_LOG_INFO, "Before loop\n");
     ret = dv_process_events();
