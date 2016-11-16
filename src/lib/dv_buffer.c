@@ -3,6 +3,19 @@
 #include "dv_mem.h"
 #include "dv_errno.h"
 
+void
+dv_buf_reset(dv_buffer_t *buf)
+{
+    buf->bf_head = buf->bf_tail = buf->bf_buf;
+}
+
+void
+dv_buf_init(dv_buffer_t *buf, void *head, size_t size)
+{
+    buf->bf_buf = buf->bf_head = buf->bf_tail = head;
+    buf->bf_bsize = size;
+}
+
 dv_buffer_t *
 dv_buf_alloc(size_t size)
 {
@@ -13,8 +26,7 @@ dv_buf_alloc(size_t size)
         return NULL;
     }
     
-    buf->bf_buf = buf->bf_head = buf->bf_tail = (dv_u8 *)(buf + 1);
-    buf->bf_bsize = size;
+    dv_buf_init(buf, buf + 1, size);
 
     return buf;
 }

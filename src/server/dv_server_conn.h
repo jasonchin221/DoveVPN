@@ -8,11 +8,12 @@
 #include "dv_buffer.h"
 #include "dv_event.h"
 #include "dv_types.h"
+#include "dv_ip_pool.h"
 
 typedef struct _dv_srv_conn_t {
     struct list_head    sc_list_head;
     void                *sc_ssl;
-    void                *sc_ip;
+    dv_subnet_ip_t      *sc_ip; 
     int                 sc_fd;
     dv_u32              sc_flags;
     dv_event_t          sc_wev;

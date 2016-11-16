@@ -8,11 +8,11 @@
 #include "dv_server_signal.h"
 #include "dv_server_conf.h"
 #include "dv_server_core.h"
+#include "dv_server_conn.h"
 
 #define DV_SRV_LOG_NAME     "DoveVPN-Server"
 
 dv_u32 dv_ncpu;
-dv_u32 dv_srv_conn_max = 200000;
 const dv_proto_suite_t *dv_srv_ssl_proto_suite;
 void *dv_srv_ssl_ctx;
 
@@ -84,7 +84,12 @@ dv_srv_init(dv_srv_conf_t *conf)
         goto out;
     }
 
-    ret = DV_OK;
+    ret = dv_srv_conn_pool_init(conf->sc_worker_connections,
+            conf->sc_ssl_bufsize);
+    if (ret != DV_OK) {
+        DV_LOG(DV_LOG_INFO, "Connection init failed!\n");
+    }
+
 out:
     return ret;
 }
@@ -92,6 +97,7 @@ out:
 void
 dv_srv_exit(void)
 {
+    dv_srv_conn_pool_destroy();
     dv_process_exit();
     if (dv_srv_ssl_proto_suite == NULL) {
         return;

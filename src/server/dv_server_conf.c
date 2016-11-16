@@ -5,12 +5,12 @@
 #include "dv_log.h"
 
 #define DV_SRV_CONF_NETWORK         "network"
-#define DV_SRV_CONF_SUBNET_IP       "subnet-ip"
-#define DV_SRV_CONF_SUBNET_MASK     "subnet-mask"
-#define DV_SRV_CONF_ROUTE_NET_IP    "route-net-ip"
-#define DV_SRV_CONF_ROUTE_MASK      "route-mask"
-#define DV_SRV_CONF_LISTEN_IP       "listen-ip"
-#define DV_SRV_CONF_PORT            "listen-port"
+#define DV_SRV_CONF_SUBNET_IP       "subnet_ip"
+#define DV_SRV_CONF_SUBNET_MASK     "subnet_mask"
+#define DV_SRV_CONF_ROUTE_NET_IP    "route_net_ip"
+#define DV_SRV_CONF_ROUTE_MASK      "route_mask"
+#define DV_SRV_CONF_LISTEN_IP       "listen_ip"
+#define DV_SRV_CONF_PORT            "listen_port"
 #define DV_SRV_CONF_MTU             "mtu"
 #define DV_SRV_CONF_PROTO           "proto"
 #define DV_SRV_CONF_PROTO_TYPE      "type"
@@ -19,12 +19,13 @@
 #define DV_SRV_CONF_CA              "ca"
 #define DV_SRV_CONF_PROCESSES       "processes"
 #define DV_SRV_CONF_DAEMON          "daemon"
-#define DV_SRV_CONF_SINGLE_PROCESS  "single-process"
-#define DV_SRV_CONF_PID             "pid-file"
+#define DV_SRV_CONF_SINGLE_PROCESS  "single_process"
+#define DV_SRV_CONF_PID             "pid_file"
 #define DV_SRV_CONF_PROTO           "proto"
 #define DV_SRV_CONF_CONNECTION      "connection"
-#define DV_SRV_CONF_TUN_BUFFER_SIZE "tun-buffer-size"
-#define DV_SRV_CONF_SSL_BUFFER_SIZE "ssl-buffer-size"
+#define DV_SRV_CONF_TUN_BUFFER_SIZE "tun_buffer_size"
+#define DV_SRV_CONF_SSL_BUFFER_SIZE "ssl_buffer_size"
+#define DV_SRV_CONF_WORKER_CONN     "worker_connections"
 
 static dv_srv_conf_t dv_srv_conf;
 
@@ -131,6 +132,14 @@ static dv_conf_parse_t dv_srv_conf_connection[] = {
         .cp_name = DV_SRV_CONF_SSL_BUFFER_SIZE,
         .cp_len = sizeof(dv_srv_conf.sc_ssl_bufsize),
         .cp_offset = dv_offsetof(dv_srv_conf_t, sc_ssl_bufsize),
+        .cp_type = json_type_int,
+        .cp_necessary = DV_TRUE,
+        .cp_parse = dv_conf_parse_int,
+    },
+    {
+        .cp_name = DV_SRV_CONF_WORKER_CONN,
+        .cp_len = sizeof(dv_srv_conf.sc_worker_connections),
+        .cp_offset = dv_offsetof(dv_srv_conf_t, sc_worker_connections),
         .cp_type = json_type_int,
         .cp_necessary = DV_TRUE,
         .cp_parse = dv_conf_parse_int,

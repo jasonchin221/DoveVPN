@@ -14,6 +14,8 @@ typedef struct _dv_buffer_t {
     size_t      bf_bsize;
 } dv_buffer_t;
 
+extern void dv_buf_init(dv_buffer_t *buf, void *head, size_t size);
+extern void dv_buf_reset(dv_buffer_t *buf);
 extern dv_buffer_t *dv_buf_alloc(size_t size);
 extern void dv_buf_free(dv_buffer_t *buf);
 extern int dv_buf_data_to_ssl(void *ssl, dv_buffer_t *buf,

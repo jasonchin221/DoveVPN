@@ -42,17 +42,18 @@ dv_tun_t dv_srv_tun = {
 
 static int
 dv_srv_create_and_set_tun(dv_tun_t *tun, int seq, int mask, int mtu,
-            char *subnet_ip, dv_u32 subnet_ip_size, size_t tun_bsize)
+            char *subnet_ip, dv_u32 subnet_ip_len, size_t tun_bsize)
 {
     dv_subnet_ip_t  *ip = NULL;
     int             ret = DV_ERROR;
 
     ret = dv_tun_dev_create(tun, seq);
     if (ret != DV_OK) {
+        DV_LOG(DV_LOG_INFO, "Tun create failed!\n");
         return DV_ERROR;
     }
 
-    ret = dv_ip_pool_init(subnet_ip, subnet_ip_size, mask, mtu);
+    ret = dv_ip_pool_init(subnet_ip, subnet_ip_len, mask, mtu);
     if (ret != DV_OK) {
         goto err;
     }

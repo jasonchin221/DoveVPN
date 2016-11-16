@@ -177,8 +177,9 @@ _dv_ip_pool_init(dv_ip_pool_t *pool, char *subnet_ip, dv_u32 len, int mask, int 
     DV_LOG(DV_LOG_NOTICE, "Alloc ip pool(%d MB) OK!\n", 
             total_size/1000000);
 
-    pool->ip_hash_table = dv_ip_hash_init(dv_srv_conn_max, addr_len);
+    pool->ip_hash_table = dv_ip_hash_init(total_num, addr_len);
     if (pool->ip_hash_table == NULL) {
+        DV_LOG(DV_LOG_NOTICE, "Init ip hash failed!\n");
         goto out;
     }
 
