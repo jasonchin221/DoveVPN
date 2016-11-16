@@ -206,21 +206,6 @@ dv_event_unregister(int sockfd)
     return DV_ERROR;
 }
 
-#if 0
-static void
-dv_event_remove_registered(void)
-{
-    int i = 0;
-
-    for (i = 0; i < DV_SOCKET_MAX_NUM; i++) {
-        if (dv_event_register_array[i].er_ev == NULL) {
-            continue;
-        }
-        dv_event_del(dv_event_register_array[i].er_ev);
-    }
-}
-#endif
-
 void 
 dv_event_set_timer(dv_event_t *tmout)
 {
@@ -235,42 +220,3 @@ dv_event_set_timer(dv_event_t *tmout)
     }
 }
 
-#if 0
-int
-dv_event_prepare(void)
-{
-    dv_event_t *event = NULL;
-    int sockfd = 0;
-    int i = 0;
-    int err = DV_OK;
-
-    dv_event_base = event_base_new();
-    if (dv_event_base == NULL) {
-        return DV_ERROR;
-    }
-
-    for (i = 0; i < DV_SOCKET_MAX_NUM; i++) {
-        event = dv_event_register_array[i].er_ev;
-        if (event == NULL) {
-            continue;
-        }
-
-        sockfd = dv_event_register_array[i].er_sockfd;
-        dv_log("TCP socket is %d!\n", sockfd);
-        dv_event_set_read(sockfd, event);
-
-        err = dv_event_add(event);
-        if (err != DV_OK) {
-            dv_log("Add registered event failed!sockfd = %d\n",sockfd);
-            goto event_exit;
-        }
-    }
-
-out:
-    return err;
-event_exit:
-    event_base_free(dv_event_base);
-    goto out;
-}
-
-#endif
