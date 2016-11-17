@@ -200,7 +200,7 @@ dv_ssl_read_handler(int sock, short event, void *arg, void *ssl, int tun_fd,
             rbuf->bf_tail += rlen;
             while (1) {
                 space = rbuf->bf_bsize - (rbuf->bf_tail - rbuf->bf_buf);
-                data_len = rbuf->bf_head - rbuf->bf_tail;
+                data_len = rbuf->bf_tail - rbuf->bf_head;
                 ip_tlen = dv_ip_datalen(rbuf->bf_head, data_len);
                 if (ip_tlen == 0) {
                     if (space < mtu) {

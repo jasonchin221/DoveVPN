@@ -28,7 +28,7 @@ dv_srv_conn_pool_init(dv_u32 max_conn, size_t bufsize)
     dv_u32              i = 0;
     int                 ret = 0;
 
-    size = sizeof(dv_srv_conn_t) + bufsize;
+    size = sizeof(dv_srv_conn_t) + 2*bufsize;
     total_size = size*max_conn + sizeof(*dv_srv_conn_pool);
 
     if ((dv_srv_conn_pool_shmid = shmget(DV_SRV_CONN_POOL_SHM_KEY, total_size,
@@ -140,9 +140,7 @@ dv_srv_conn_destroy(dv_srv_conn_t *conn)
 
     DV_LOG(DV_LOG_INFO, "SSL data in!\n");
     dv_event_destroy(&conn->sc_rev);
-    DV_LOG(DV_LOG_INFO, "SSL data in!\n");
     dv_event_destroy(&conn->sc_wev);
-    DV_LOG(DV_LOG_INFO, "SSL data in!\n");
     if (conn->sc_ssl) {
         suite->ps_shutdown(conn->sc_ssl);
         suite->ps_ssl_free(conn->sc_ssl);

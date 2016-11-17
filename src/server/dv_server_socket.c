@@ -249,17 +249,21 @@ _dv_srv_ssl_accept(int sock, short event, void *arg, struct sockaddr *addr,
 
     DV_LOG(DV_LOG_INFO, "Accept!\n");
     accept_fd = accept(sock, addr, addrlen); 
+    DV_LOG(DV_LOG_INFO, "SSL data in!\n");
     if (accept_fd < 0) {
         DV_LOG(DV_LOG_DEBUG, "Accept failed(%s)!\n", strerror(errno));
         return;
     }
 
+    DV_LOG(DV_LOG_INFO, "SSL data in!\n");
     if (fcntl(accept_fd, F_SETFL, O_NONBLOCK) == -1) {
         DV_LOG(DV_LOG_INFO, "Set noblock failed(%s)!\n", strerror(errno));
         return;
     }
 
+    DV_LOG(DV_LOG_INFO, "SSL data in!\n");
     ssl = suite->ps_ssl_new(ctx);
+    DV_LOG(DV_LOG_INFO, "SSL data in!\n");
     if (ssl == NULL) {
         DV_LOG(DV_LOG_INFO, "New ssl failed!\n");
         goto out;
@@ -267,12 +271,14 @@ _dv_srv_ssl_accept(int sock, short event, void *arg, struct sockaddr *addr,
     /* 将连接用户的 socket 加入到 SSL */
     suite->ps_set_fd(ssl, accept_fd);
 
+    DV_LOG(DV_LOG_INFO, "SSL data in!\n");
     conn = dv_srv_conn_pool_alloc(accept_fd, ssl);
     if (conn == NULL) {
         DV_LOG(DV_LOG_INFO, "Create conn failed!\n");
         goto out;
     }
 
+    DV_LOG(DV_LOG_INFO, "SSL data in!\n");
     rev = &conn->sc_rev;
     wev = &conn->sc_wev;
 
