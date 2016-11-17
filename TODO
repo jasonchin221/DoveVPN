@@ -1,5 +1,3 @@
 Server:
-1. SSL recv buffer
-2. Server core dump when client close
-3. Tun ip set error
-4. Download big package
+1. Server core dump when client close
+2. Download big package

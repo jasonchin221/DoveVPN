@@ -1,6 +1,7 @@
 #include <unistd.h>
 #include <string.h>
 #include <fcntl.h>
+#include <errno.h>
 
 #include "dv_types.h"
 #include "dv_socket.h"
@@ -143,6 +144,7 @@ dv_srv_ssl_handshake_done(int sock, dv_event_t *ev, const dv_proto_suite_t *suit
     ip->si_wev = &conn->sc_wev;
     /* Send message to alloc ip address */
     conn->sc_ip = ip;
+    DV_LOG(DV_LOG_INFO, "alloced ip = %s!\n", ip->si_ip);
 
     mlen = dv_msg_ipalloc_build(wbuf->bf_head, wbuf->bf_bsize,
             ip->si_ip, strlen(ip->si_ip) + 1, dv_get_subnet_mask(),
@@ -251,12 +253,12 @@ _dv_srv_ssl_accept(int sock, short event, void *arg, struct sockaddr *addr,
     DV_LOG(DV_LOG_INFO, "Accept!\n");
     accept_fd = accept(sock, addr, addrlen); 
     if (accept_fd < 0) {
-        DV_LOG(DV_LOG_INFO, "Accept failed!\n");
+        DV_LOG(DV_LOG_INFO, "Accept failed(%s)!\n", strerror(errno));
         return;
     }
 
     if (fcntl(accept_fd, F_SETFL, O_NONBLOCK) == -1) {
-        DV_LOG(DV_LOG_INFO, "Set noblock failed!\n");
+        DV_LOG(DV_LOG_INFO, "Set noblock failed(%s)!\n", strerror(errno));
         return;
     }
 

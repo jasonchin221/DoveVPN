@@ -53,7 +53,7 @@ dv_srv_create_and_set_tun(dv_tun_t *tun, int seq, int mask, int mtu,
         return DV_ERROR;
     }
 
-    ret = dv_ip_pool_init(subnet_ip, subnet_ip_len, mask, mtu);
+    ret = dv_ip_pool_init(subnet_ip, subnet_ip_len, mask, mtu, seq, dv_ncpu);
     if (ret != DV_OK) {
         goto err;
     }
@@ -63,8 +63,9 @@ dv_srv_create_and_set_tun(dv_tun_t *tun, int seq, int mask, int mtu,
         goto err;
     }
 
+    DV_LOG(DV_LOG_INFO, "aaip = %s!\n", ip->si_ip);
     /* Config ip for tun */
-    ret = dv_if_set(tun->tn_name, ip->si_ip, mask, mtu);
+    ret = dv_if_set(tun->tn_name, ip->si_ip, dv_get_subnet_mask(), mtu);
     if (ret != DV_OK) {
         goto err;
     }

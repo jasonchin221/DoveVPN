@@ -16,3 +16,13 @@ dv_get_cpu_num(void)
 {
     return sysconf(_SC_NPROCESSORS_ONLN);
 }
+
+dv_u32
+dv_log2(dv_u32 x)
+{
+    dv_u32      y = 0;
+
+    for (y = 0; (x >> y) != 0; y++);
+
+    return y;
+}

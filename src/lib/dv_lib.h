@@ -74,5 +74,6 @@ dv_ip_datalen(void *h, size_t len)
 }
 
 extern long dv_get_cpu_num(void);
+extern dv_u32 dv_log2(dv_u32 x);
 
 #endif
