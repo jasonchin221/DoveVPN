@@ -23,7 +23,6 @@
 #define DV_SRV_CONF_PID             "pid_file"
 #define DV_SRV_CONF_PROTO           "proto"
 #define DV_SRV_CONF_CONNECTION      "connection"
-#define DV_SRV_CONF_TUN_BUFFER_SIZE "tun_buffer_size"
 #define DV_SRV_CONF_SSL_BUFFER_SIZE "ssl_buffer_size"
 #define DV_SRV_CONF_WORKER_CONN     "worker_connections"
 
@@ -120,15 +119,7 @@ static dv_conf_parse_t dv_srv_conf_processes[] = {
 #define DV_SRV_CONF_PROCESSES_ARRAY_SIZE DV_ARRAY_SIZE(dv_srv_conf_processes)
 
 static dv_conf_parse_t dv_srv_conf_connection[] = {
-    {
-        .cp_name = DV_SRV_CONF_TUN_BUFFER_SIZE,
-        .cp_len = sizeof(dv_srv_conf.sc_tun_bufsize),
-        .cp_offset = dv_offsetof(dv_srv_conf_t, sc_tun_bufsize),
-        .cp_type = json_type_int,
-        .cp_necessary = DV_TRUE,
-        .cp_parse = dv_conf_parse_int,
-    },
-    {
+   {
         .cp_name = DV_SRV_CONF_SSL_BUFFER_SIZE,
         .cp_len = sizeof(dv_srv_conf.sc_ssl_bufsize),
         .cp_offset = dv_offsetof(dv_srv_conf_t, sc_ssl_bufsize),

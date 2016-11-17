@@ -140,6 +140,7 @@ dv_srv_ssl_handshake_done(int sock, dv_event_t *ev, const dv_proto_suite_t *suit
         return DV_ERROR;
     }
 
+    ip->si_wev = &conn->sc_wev;
     /* Send message to alloc ip address */
     conn->sc_ip = ip;
 

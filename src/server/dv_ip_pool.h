@@ -18,6 +18,7 @@ typedef struct _dv_subnet_ip_t {
         struct in_addr  si_addr4;
         struct in6_addr si_addr6;
     } si_addr;
+    void                *si_wev;
 } dv_subnet_ip_t; 
 
 typedef struct _dv_ip_hash_t {
