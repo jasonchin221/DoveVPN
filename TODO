@@ -1,3 +1,5 @@
 Server:
-1. Event, connection memory pool
-2. SSL recv buffer
+1. SSL recv buffer
+2. Server core dump when client close
+3. Tun ip set error
+4. Download big package

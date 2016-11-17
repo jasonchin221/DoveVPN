@@ -137,20 +137,9 @@ int
 dv_trans_buf_to_tun(int tun_fd, dv_buffer_t *rbuf, size_t data_len)
 {
     ssize_t                 wlen = 0;
-    int                     dlen = 0;
 
     wlen = write(tun_fd, rbuf->bf_head, data_len);
     if (wlen == data_len) {
-        rbuf->bf_head += data_len;
-        dlen = rbuf->bf_tail - rbuf->bf_head;
-        if (dlen < DV_IP_HEADER_MIN_LEN || 
-                dv_ip_datalen(rbuf->bf_head, dlen) >
-                rbuf->bf_bsize - (rbuf->bf_head - rbuf->bf_buf)) {
-            memmove(rbuf->bf_buf, rbuf->bf_head, dlen);
-            rbuf->bf_tail -= (rbuf->bf_head - rbuf->bf_buf);
-            rbuf->bf_head = rbuf->bf_buf;
-        }
-
         return DV_OK;
     }
 
@@ -179,12 +168,21 @@ dv_ssl_write_handler(int sock, short event, void *arg, dv_buffer_t *wbuf,
     peer_handler(sock, event, ev->et_peer_ev);
 }
 
+static void
+dv_buf_data_move(dv_buffer_t *buf, int data_len)
+{
+    memmove(buf->bf_buf, buf->bf_head, data_len);
+    buf->bf_head = buf->bf_buf;
+    buf->bf_tail = buf->bf_head + data_len;
+}
+
 void
 dv_ssl_read_handler(int sock, short event, void *arg, void *ssl, int tun_fd,
-        const dv_proto_suite_t *suite, dv_buffer_t *rbuf,
+        const dv_proto_suite_t *suite, dv_buffer_t *rbuf, dv_u32 mtu,
         dv_ssl_err_handler err_handler)
 {
     dv_event_t              *ev = arg; 
+    int                     space = 0;
     int                     rlen = 0;
     size_t                  ip_tlen = 0;
     int                     data_len = 0;
@@ -199,19 +197,28 @@ dv_ssl_read_handler(int sock, short event, void *arg, void *ssl, int tun_fd,
                 return;
             }
             rbuf->bf_tail += rlen;
-            data_len = rbuf->bf_head - rbuf->bf_tail;
-            ip_tlen = dv_ip_datalen(rbuf->bf_head, data_len);
-            if (ip_tlen == 0 || ip_tlen > data_len) {
-                /* Data not long enough */
-                continue;
-            }
-            ret = dv_trans_buf_to_tun(tun_fd, rbuf, ip_tlen);
-            if (ret != DV_OK) {
-                if (dv_event_add(ev->et_peer_ev) != DV_OK) {
-                    DV_LOG(DV_LOG_INFO, "Add peer event failed\n!");
-                    return;
+            while (1) {
+                space = rbuf->bf_bsize - (rbuf->bf_tail - rbuf->bf_buf);
+                data_len = rbuf->bf_head - rbuf->bf_tail;
+                ip_tlen = dv_ip_datalen(rbuf->bf_head, data_len);
+                if (ip_tlen == 0) {
+                    if (space < mtu) {
+                        dv_buf_data_move(rbuf, data_len);
+                    }
+                    break;
                 }
-                break;
+                if (ip_tlen > data_len) {
+                    if (ip_tlen - data_len > space) {
+                        dv_buf_data_move(rbuf, data_len);
+                    }
+                    break;
+                }
+                dv_trans_buf_to_tun(tun_fd, rbuf, ip_tlen);
+                rbuf->bf_head += data_len;
+                if (rbuf->bf_head == rbuf->bf_tail) {
+                    rbuf->bf_head = rbuf->bf_tail = rbuf->bf_buf;
+                    break;
+                }
             }
             continue;
         }

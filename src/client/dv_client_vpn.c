@@ -5,6 +5,7 @@
 #include "dv_if.h"
 #include "dv_log.h"
 #include "dv_trans.h"
+#include "dv_client_process.h"
 
 int
 dv_client_set_tun_ip(char *dev, const dv_proto_suite_t *suite, void *ssl)
@@ -44,6 +45,8 @@ dv_client_set_tun_ip(char *dev, const dv_proto_suite_t *suite, void *ssl)
         DV_LOG(DV_LOG_INFO, "Set route failed\n");
         return DV_ERROR;
     }
+
+    dv_client_mut = msg.mi_mtu;
 
     return DV_OK;
 }

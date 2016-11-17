@@ -27,12 +27,13 @@
 #define DV_CLIENT_LOG_NAME  "DoveVPN-Client"
 #define DV_EVENT_MAX_NUM    10
 
+dv_u32 dv_client_mut;
+
 static dv_tun_t dv_client_tun;
 static int dv_cli_sockfd = -1;
 static dv_event_t dv_cli_ssl_rev;
 static dv_event_t dv_cli_ssl_wev;
 static dv_event_t dv_cli_tun_rev;
-static dv_event_t dv_cli_tun_wev;
 
 static void
 dv_cli_buf_to_ssl(int sock, short event, void *arg);
@@ -157,27 +158,6 @@ dv_cli_buf_to_ssl(int sock, short event, void *arg)
 }
 
 static void
-dv_cli_buf_to_tun(int sock, short event, void *arg)
-{
-    dv_event_t              *ev = arg; 
-    dv_cli_conn_t           *conn = ev->et_conn;
-    dv_buffer_t             *wbuf = conn->cc_wbuf;
-    size_t                  ip_tlen = 0;
-    int                     data_len = 0;
-    int                     tun_fd = conn->cc_tun_fd;
-    int                     ret = DV_ERROR;
-
-    data_len = wbuf->bf_head - wbuf->bf_tail;
-    ip_tlen = dv_ip_datalen(wbuf->bf_head, data_len);
-    ret = dv_trans_buf_to_tun(tun_fd, wbuf, ip_tlen);
-    if (ret != DV_OK) {
-        if (dv_event_add(ev) != DV_OK) {
-            return;
-        }
-    }
-}
-
-static void
 dv_cli_ssl_to_tun(int sock, short event, void *arg)
 {
     dv_event_t              *ev = arg; 
@@ -189,7 +169,7 @@ dv_cli_ssl_to_tun(int sock, short event, void *arg)
 
     DV_LOG(DV_LOG_INFO, "Client: ssl data arrived!\n");
     dv_ssl_read_handler(sock, event, arg, ssl, tun_fd, suite, rbuf,
-        dv_cli_ssl_err_handler);
+            dv_client_mut, dv_cli_ssl_err_handler);
 }
 
 static void
@@ -217,7 +197,6 @@ dv_client_process(dv_client_conf_t *conf)
     dv_event_t                  *ssl_rev = &dv_cli_ssl_rev;
     dv_event_t                  *ssl_wev = &dv_cli_ssl_wev;
     dv_event_t                  *tun_rev = &dv_cli_tun_rev;
-    dv_event_t                  *tun_wev = &dv_cli_tun_wev;
     dv_cli_conn_t               conn = {};
     int                         tun_fd = 0;
     int                         ret = DV_ERROR;
@@ -274,8 +253,6 @@ dv_client_process(dv_client_conf_t *conf)
 
     dv_event_conn_set(tun_rev, &conn, tun_fd, dv_cli_tun_to_ssl,
             dv_event_set_read);
-    dv_event_conn_set(tun_wev, &conn, tun_fd, dv_cli_buf_to_tun,
-            dv_event_set_write);
     if (dv_event_add(tun_rev) != DV_OK) {
         DV_LOG(DV_LOG_INFO, "Add event failed!\n");
         goto out;
@@ -290,8 +267,6 @@ dv_client_process(dv_client_conf_t *conf)
         goto out;
     }
 
-    ssl_rev->et_peer_ev = tun_wev;
-    tun_wev->et_peer_ev = ssl_rev;
     ssl_wev->et_peer_ev = tun_rev;
     tun_rev->et_peer_ev = ssl_wev;
 
@@ -305,7 +280,6 @@ out:
     dv_event_destroy(ssl_rev);
     dv_event_destroy(ssl_wev);
     dv_event_destroy(tun_rev);
-    dv_event_destroy(tun_wev);
     if (ssl != NULL) {
         suite->ps_shutdown(ssl);
         suite->ps_ssl_free(ssl);
