@@ -61,6 +61,7 @@ dv_srv_ssl_add_listenning(char *ip, dv_event_handler callback, int port)
 static int
 dv_srv_ssl_err_handler(int sock, dv_event_t *ev, const dv_proto_suite_t *suite)
 {
+    DV_LOG(DV_LOG_INFO, "SSL data in!\n");
     dv_event_destroy(ev);
 
     return DV_ERROR;

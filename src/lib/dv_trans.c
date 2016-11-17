@@ -188,6 +188,7 @@ dv_ssl_read_handler(int sock, short event, void *arg, void *ssl, int tun_fd,
     int                     data_len = 0;
     int                     ret = DV_ERROR;
 
+    DV_LOG(DV_LOG_INFO, "SSL data in!\n");
     while (1) {
         rlen = suite->ps_read(ssl, rbuf->bf_tail, rbuf->bf_bsize - 
                 (rbuf->bf_tail - rbuf->bf_buf));

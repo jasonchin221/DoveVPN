@@ -33,6 +33,7 @@ dv_add_channel_read_event(int fd, dv_event_handler handler)
 void
 dv_destroy_channel_events(void)
 {
+    DV_LOG(DV_LOG_INFO, "SSL data in!\n");
     dv_event_destroy(&dv_channel_rev);
 }
 

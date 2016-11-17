@@ -138,8 +138,11 @@ dv_srv_conn_destroy(dv_srv_conn_t *conn)
 
     dv_assert(suite != NULL);
 
+    DV_LOG(DV_LOG_INFO, "SSL data in!\n");
     dv_event_destroy(&conn->sc_rev);
+    DV_LOG(DV_LOG_INFO, "SSL data in!\n");
     dv_event_destroy(&conn->sc_wev);
+    DV_LOG(DV_LOG_INFO, "SSL data in!\n");
     if (conn->sc_ssl) {
         suite->ps_shutdown(conn->sc_ssl);
         suite->ps_ssl_free(conn->sc_ssl);

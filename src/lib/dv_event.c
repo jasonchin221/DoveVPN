@@ -14,9 +14,6 @@
 static struct event_base *
 dv_event_base = NULL;
 
-static dv_event_register_t
-dv_event_register_array[DV_SOCKET_MAX_NUM] = {};
-
 int
 dv_process_events(void)
 {
@@ -174,6 +171,8 @@ dv_event_destroy(dv_event_t *event)
         return DV_ERROR;
     }
 
+    event->et_flags |= DV_EVENT_FLAGS_FREED;
+
     if (event->et_ev) {
         event_free(event->et_ev);
     }
@@ -190,47 +189,7 @@ dv_event_destroy(dv_event_t *event)
         dv_free(event);
     }
 
-    event->et_flags |= DV_EVENT_FLAGS_FREED;
-
     return DV_OK;
-}
-
-int
-dv_event_register(dv_event_register_t *event) 
-{
-    int i = 0;
-
-    if (event == NULL) {
-        return DV_ERROR;
-    }
-
-    for (i = 0; i < DV_SOCKET_MAX_NUM; i++) {
-        if (dv_event_register_array[i].er_ev == NULL) {
-            dv_event_register_array[i] = *event;
-            return DV_OK;
-        }
-    }
-
-    return DV_ERROR;
-}
-
-int
-dv_event_unregister(int sockfd) 
-{
-    dv_event_register_t *er = NULL;
-    int                 i = 0;
-
-    for (i = 0; i < DV_SOCKET_MAX_NUM; i++) {
-        er = &dv_event_register_array[i];
-        if (er->er_ev != NULL && er->er_sockfd == sockfd) {
-            dv_event_del(er->er_ev);
-            dv_event_destroy(er->er_ev);
-            memset(er, 0, sizeof(*er));
-            return DV_OK;
-        }
-    }
-
-    return DV_ERROR;
 }
 
 void 
