@@ -2,6 +2,7 @@
 #define __DV_SERVER_CONN_H__
 
 #include <pthread.h>
+#include <sys/types.h>
 
 #include "list.h"
 
@@ -19,6 +20,7 @@ typedef struct _dv_srv_conn_t {
     dv_subnet_ip_t      *sc_ip; 
     int                 sc_fd;
     dv_u32              sc_flags;
+    pid_t               sc_pid;
     dv_event_t          sc_wev;
     dv_event_t          sc_rev;
     dv_buffer_t         sc_rbuf;

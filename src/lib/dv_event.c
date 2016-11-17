@@ -162,6 +162,10 @@ dv_event_create(void)
 int 
 dv_event_destroy(dv_event_t *event)
 {
+    if (dv_event_base == NULL) {
+        return DV_ERROR;
+    }
+
     if (!event) {
         /*TODO: add error log */
         return DV_ERROR;

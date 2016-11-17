@@ -187,11 +187,18 @@ dv_server_send_signal(char *pid_file, char *cmd)
 static void
 _dv_server_process_exit(void)
 {
-    dv_destroy_channel_events();
     dv_srv_tun_ev_destroy();
     dv_tun_dev_destroy(&dv_srv_tun);
     dv_trans_exit();
     dv_srv_exit();
+}
+
+void
+dv_worker_process_exit(void)
+{    
+    dv_destroy_channel_events();
+    _dv_server_process_exit();
+    exit(0);
 }
 
 void
@@ -214,7 +221,7 @@ dv_worker_channel_read_handler(int sock, short event, void *arg)
         if (rlen == 0) {
             DV_LOG(DV_LOG_INFO, "Master closed!\n");
             close(sock);
-            dv_server_process_exit();
+            dv_worker_process_exit();
         }
 
         if (rlen == -DV_EWANT_READ) {
@@ -224,7 +231,7 @@ dv_worker_channel_read_handler(int sock, short event, void *arg)
         if (rlen < 0) {
             DV_LOG(DV_LOG_INFO, "Channel error!\n");
             close(sock);
-            dv_server_process_exit();
+            dv_worker_process_exit();
         }
 
         switch (ch.ch_command) {
@@ -236,7 +243,7 @@ dv_worker_channel_read_handler(int sock, short event, void *arg)
             case DV_CH_CMD_TERMINATE:
                 DV_LOG(DV_LOG_INFO, "Exit!\n");
                 close(sock);
-                dv_server_process_exit();
+                dv_worker_process_exit();
                 return;
         }
     }
@@ -306,13 +313,13 @@ dv_worker_process_cycle(void *cycle, void *data)
     ret = dv_srv_create_and_set_tun(tun, worker, mask, conf->sc_mtu,
             conf->sc_subnet_ip, sizeof(conf->sc_subnet_ip));
     if (ret != DV_OK) {
-        dv_server_process_exit();
+        dv_worker_process_exit();
     }
 
     ret = dv_cpuaffinity_set(worker);
     if (ret != DV_OK) {
         DV_LOG(DV_LOG_INFO, "Set cpuaffinity failed!\n");
-        dv_server_process_exit();
+        dv_worker_process_exit();
     }
 
     /* Event loop */

@@ -92,6 +92,7 @@ dv_srv_conn_init(dv_srv_conn_t *conn, int fd, void *ssl, dv_u32 flag)
     conn->sc_flags = 0;
     conn->sc_ip = NULL;
     conn->sc_ssl = ssl;
+    conn->sc_pid = getpid();
 
     rev = &conn->sc_rev;
     wev = &conn->sc_wev;
@@ -172,6 +173,7 @@ dv_srv_conn_pool_destroy(void)
     dv_srv_conn_t       *conn = NULL;
     struct list_head    *pos = NULL;
     struct list_head    *n = NULL;
+    pid_t               pid = getpid();
     int                 ret = 0;
 
     if (dv_srv_conn_pool == NULL) {
@@ -181,7 +183,9 @@ dv_srv_conn_pool_destroy(void)
     pthread_spin_lock(&dv_srv_conn_pool->cp_lock);
     list_for_each_safe(pos, n, &dv_srv_conn_pool->cp_list_used) {
         conn = dv_container_of(pos, dv_srv_conn_t, sc_list_head);
-        dv_srv_conn_pool_free(conn);
+        if (pid == conn->sc_pid) {
+            dv_srv_conn_pool_free(conn);
+        }
     }
     pthread_spin_unlock(&dv_srv_conn_pool->cp_lock);
 
@@ -192,7 +196,6 @@ dv_srv_conn_pool_destroy(void)
         DV_LOG(DV_LOG_NOTICE, "Remove SHM failed!\n");
     }
 }
-
 
 dv_u32
 dv_srv_conn_num_get(void)
