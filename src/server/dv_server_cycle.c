@@ -256,6 +256,10 @@ dv_worker_process_init(int worker)
         dv_server_process_exit();
     }
 
+    if (dv_event_reinit() != DV_OK) {
+        DV_LOG(DV_LOG_ALERT, "Reinit event base failed");
+    }
+
     for (n = 0; n < dv_last_process; n++) {
         if (dv_processes[n].pc_pid == -1) {
             continue;
@@ -272,13 +276,14 @@ dv_worker_process_init(int worker)
         if (close(dv_processes[n].pc_channel[1]) == -1) {
             DV_LOG(DV_LOG_ALERT, "Close() channel failed\n");
         }
+        DV_LOG(DV_LOG_ALERT, "Close channel %d\n", dv_processes[n].pc_channel[1]);
     }
 
     if (close(dv_processes[dv_process_slot].pc_channel[0]) == -1) {
         DV_LOG(DV_LOG_ALERT, "Close() channel failed\n");
     }
 
-    DV_LOG(DV_LOG_INFO, "Add read channel!\n");
+    DV_LOG(DV_LOG_INFO, "Add read channel! dv_channel = %d\n", dv_channel);
     dv_add_channel_read_event(dv_channel, dv_worker_channel_read_handler);
 }
 

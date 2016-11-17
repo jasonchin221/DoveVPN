@@ -70,12 +70,10 @@ static void
 dv_srv_ssl_to_tun(int sock, short event, void *arg)
 {
     dv_event_t              *ev = arg; 
-    dv_event_t              *peer_ev = ev->et_peer_ev; 
     dv_srv_conn_t           *conn = ev->et_conn;
-    dv_srv_conn_t           *peer_conn = peer_ev->et_conn;
     void                    *ssl = conn->sc_ssl;
     const dv_proto_suite_t  *suite = dv_srv_ssl_proto_suite;
-    dv_buffer_t             *rbuf = &peer_conn->sc_rbuf;
+    dv_buffer_t             *rbuf = &conn->sc_rbuf;
     int                     tun_fd = dv_srv_tun.tn_fd;
 
     DV_LOG(DV_LOG_INFO, "SSL data in!\n");
@@ -144,7 +142,6 @@ dv_srv_ssl_handshake_done(int sock, dv_event_t *ev, const dv_proto_suite_t *suit
     ip->si_wev = &conn->sc_wev;
     /* Send message to alloc ip address */
     conn->sc_ip = ip;
-    DV_LOG(DV_LOG_INFO, "alloced ip = %s!\n", ip->si_ip);
 
     mlen = dv_msg_ipalloc_build(wbuf->bf_head, wbuf->bf_bsize,
             ip->si_ip, strlen(ip->si_ip) + 1, dv_get_subnet_mask(),
@@ -188,7 +185,6 @@ dv_srv_ssl_handshake(int sock, short event, void *arg)
             DV_LOG(DV_LOG_INFO, "Handshake done proc failed!\n");
             goto out;
         }
-        //conn->sc_flags |= DV_SK_CONN_FLAG_HANDSHAKED;
         return;
     }
 
@@ -253,7 +249,7 @@ _dv_srv_ssl_accept(int sock, short event, void *arg, struct sockaddr *addr,
     DV_LOG(DV_LOG_INFO, "Accept!\n");
     accept_fd = accept(sock, addr, addrlen); 
     if (accept_fd < 0) {
-        DV_LOG(DV_LOG_INFO, "Accept failed(%s)!\n", strerror(errno));
+        DV_LOG(DV_LOG_DEBUG, "Accept failed(%s)!\n", strerror(errno));
         return;
     }
 
@@ -284,7 +280,6 @@ _dv_srv_ssl_accept(int sock, short event, void *arg, struct sockaddr *addr,
 
     /* 建立 SSL 连接 */
     ret = suite->ps_accept(ssl);
-    DV_LOG(DV_LOG_INFO, "ssl accept ret = %d!\n", ret);
     conn->sc_flags |= DV_SK_CONN_FLAG_HANDSHAKED;
     switch (ret) {
         case DV_OK:

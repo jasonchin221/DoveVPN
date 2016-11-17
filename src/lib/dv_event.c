@@ -6,6 +6,7 @@
 #include "dv_types.h"
 #include "dv_log.h"
 #include "dv_mem.h"
+#include "dv_assert.h"
 
 #define DV_SOCKET_MAX_NUM       110000
 
@@ -35,6 +36,20 @@ dv_event_init(void)
     return DV_OK;
 }
 
+int
+dv_event_reinit(void)
+{
+    int     ret = 0;
+
+    dv_assert(dv_event_base != NULL);
+
+    ret = event_reinit(dv_event_base);
+    if (ret != 0) {
+        return DV_ERROR;
+    }
+
+    return DV_OK;
+}
 /**
  * dv_event_exit - exit events
  * @
@@ -62,6 +77,8 @@ dv_event_set(int s, dv_event_t *event, short type)
                     event->et_handler, (void *)event);
     if (event->et_ev == NULL) {
         DV_LOG(DV_LOG_NOTICE, "Event_new failed!\n");
+    } else {
+        event->et_flags |= DV_EVENT_FLAGS_SETTED;
     }
 }
 
@@ -101,6 +118,10 @@ int
 dv_event_del(dv_event_t *event)
 {
     int  err;
+
+    if (!(event->et_flags & DV_EVENT_FLAGS_SETTED)) {
+        return DV_ERROR;
+    }
 
     err = event_del(event->et_ev);
     if (err < 0) {
@@ -152,8 +173,6 @@ dv_event_destroy(dv_event_t *event)
     if (event->et_flags & DV_EVENT_FLAGS_FREED) {
         return DV_ERROR;
     }
-
-    dv_event_del(event);
 
     if (event->et_ev) {
         event_free(event->et_ev);
