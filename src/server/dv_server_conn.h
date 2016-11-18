@@ -37,7 +37,5 @@ extern int dv_srv_conn_pool_init(dv_u32 max_conn, size_t bufsize);
 extern void dv_srv_conn_pool_destroy(void);
 extern dv_srv_conn_t *dv_srv_conn_pool_alloc(int fd, void *ssl);
 extern void dv_srv_conn_pool_free(dv_srv_conn_t *conn);
-extern dv_srv_conn_t *dv_srv_conn_mem_alloc(int fd, void *ssl, size_t bufsize);
-extern void dv_srv_conn_mem_free(dv_srv_conn_t *conn);
 
 #endif

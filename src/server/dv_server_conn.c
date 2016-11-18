@@ -165,29 +165,6 @@ dv_srv_conn_pool_free(dv_srv_conn_t *conn)
     pthread_spin_unlock(&dv_srv_conn_pool->cp_lock);
 }
 
-dv_srv_conn_t *
-dv_srv_conn_mem_alloc(int fd, void *ssl, size_t bufsize)
-{
-    dv_srv_conn_t       *conn = NULL;
-
-    conn = dv_calloc(sizeof(*conn) + 2*bufsize);
-    if (conn == NULL) {
-        return NULL;
-    }
-
-    dv_buf_init(&conn->sc_rbuf, conn + 1, bufsize);
-    dv_buf_init(&conn->sc_wbuf, (dv_u8 *)(conn + 1) + bufsize, bufsize);
-    dv_srv_conn_init(conn, fd, ssl, DV_SRV_CONN_FLAG_POOL);
-
-    return conn;
-}
-
-void
-dv_srv_conn_mem_free(dv_srv_conn_t *conn)
-{
-    dv_srv_conn_destroy(conn);
-}
-
 void
 dv_srv_conn_pool_destroy(void)
 {

@@ -20,8 +20,6 @@
 #define DV_SERVER_LISTEN_NUM    100
 #define DV_SERVER_BUF_SIZE      16384
 
-static void dv_srv_ssl_to_tun(int sock, short event, void *arg);
-
 static dv_event_t *
 dv_srv_ssl_add_listenning(char *ip, dv_event_handler callback, int port)
 {
@@ -154,7 +152,6 @@ dv_srv_ssl_handshake_done(int sock, dv_event_t *ev, const dv_proto_suite_t *suit
     }
 
     wbuf->bf_tail += mlen;
-    ip->si_wev = &conn->sc_wev;
 
     dv_ip_hash_add(ip);
 
@@ -279,7 +276,6 @@ _dv_srv_ssl_accept(int sock, short event, void *arg, struct sockaddr *addr,
     rev = &conn->sc_rev;
     wev = &conn->sc_wev;
 
-    rev->et_peer_ev = dv_srv_tun_wev;
     wev->et_handler = dv_srv_buf_to_ssl;
     dv_event_set_write(accept_fd, wev);
 

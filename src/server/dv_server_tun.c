@@ -17,8 +17,7 @@
 
 dv_u8 dv_route_net[DV_IP_ADDRESS_LEN];
 size_t dv_route_mask;
-dv_event_t *dv_srv_tun_rev;
-dv_event_t *dv_srv_tun_wev;
+dv_event_t dv_srv_tun_rev;
 
 static void
 dv_srv_tun_to_ssl(int sock, short event, void *arg)
@@ -72,44 +71,12 @@ dv_srv_tun_to_ssl(int sock, short event, void *arg)
     }
 }
 
-static void
-dv_srv_buf_to_tun(int sock, short event, void *arg)
-{
-    dv_event_t              *ev = arg; 
-    dv_srv_conn_t           *conn = ev->et_conn;
-    dv_buffer_t             *wbuf = &conn->sc_wbuf;
-    size_t                  ip_tlen = 0;
-    int                     data_len = 0;
-    int                     tun_fd = dv_srv_tun.tn_fd;
-    int                     ret = DV_ERROR;
-
-    data_len = wbuf->bf_head - wbuf->bf_tail;
-    ip_tlen = dv_ip_datalen(wbuf->bf_head, data_len);
-    ret = dv_trans_buf_to_tun(tun_fd, wbuf, ip_tlen);
-    if (ret != DV_OK) {
-        if (dv_event_add(ev) != DV_OK) {
-            DV_LOG(DV_LOG_INFO, "Add wev failed!\n");
-            return;
-        }
-    }
-}
-
 int
-dv_srv_tun_ev_create(int tun_fd, size_t bufsize)
+dv_srv_tun_ev_create(int tun_fd)
 {
-    dv_srv_conn_t   *conn = NULL;
     dv_event_t      *rev = NULL;
-    dv_event_t      *wev = NULL;
 
-    dv_assert(dv_srv_tun_rev == NULL && dv_srv_tun_wev == NULL);
-
-    conn = dv_srv_conn_mem_alloc(tun_fd, NULL, bufsize);
-    if (conn == NULL) {
-        DV_LOG(DV_LOG_INFO, "Create tun conn failed!\n");
-        return DV_ERROR;
-    }
-
-    rev = dv_srv_tun_rev = &conn->sc_rev;
+    rev = &dv_srv_tun_rev;
     rev->et_handler = dv_srv_tun_to_ssl;
     dv_event_set_persist_read(tun_fd, rev);
     if (dv_event_add(rev) != DV_OK) {
@@ -117,29 +84,12 @@ dv_srv_tun_ev_create(int tun_fd, size_t bufsize)
         return DV_ERROR;
     }
 
-    wev = dv_srv_tun_wev = &conn->sc_wev;
-    wev->et_handler = dv_srv_buf_to_tun;
-    dv_event_set_write(tun_fd, wev);
-
     return DV_OK;
-}
-
-static void
-_dv_srv_tun_ev_destroy(dv_event_t **ev)
-{
-    if (*ev == NULL) {
-        return;
-    }
-
-    dv_event_del(*ev);
-    dv_event_destroy(*ev);
-    *ev = NULL;
 }
 
 void
 dv_srv_tun_ev_destroy(void)
 {
     dv_ip_pool_exit();
-    _dv_srv_tun_ev_destroy(&dv_srv_tun_rev);
-    _dv_srv_tun_ev_destroy(&dv_srv_tun_wev);
+    dv_event_destroy(&dv_srv_tun_rev);
 }
