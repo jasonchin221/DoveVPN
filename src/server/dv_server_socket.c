@@ -77,7 +77,6 @@ dv_srv_ssl_to_tun(int sock, short event, void *arg)
     dv_buffer_t             *rbuf = &conn->sc_rbuf;
     int                     tun_fd = dv_srv_tun.tn_fd;
 
-    DV_LOG(DV_LOG_INFO, "SSL data in!\n");
     dv_ssl_read_handler(sock, event, arg, ssl, tun_fd, suite, rbuf,
             dv_get_subnet_mtu(), dv_srv_ssl_err_handler);
 }
