@@ -167,7 +167,6 @@ dv_cli_ssl_to_tun(int sock, short event, void *arg)
     dv_buffer_t             *rbuf = conn->cc_rbuf;
     int                     tun_fd = conn->cc_tun_fd;
 
-    DV_LOG(DV_LOG_INFO, "Client: ssl data arrived!\n");
     dv_ssl_read_handler(sock, event, arg, ssl, tun_fd, suite, rbuf,
             dv_client_mut, dv_cli_ssl_err_handler);
 }

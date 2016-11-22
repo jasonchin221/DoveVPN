@@ -96,7 +96,6 @@ dv_trans_data_to_ssl(int tun_fd, void *ssl, dv_buffer_t *buf,
 
     if (data_len == 0) {
         wlen = suite->ps_write(ssl, tbuf->tb_buf, rlen);
-        DV_LOG(DV_LOG_INFO, "SSL data out %d Bytes!\n", wlen);
         if (wlen == rlen) {
             return DV_OK;
         }
@@ -105,7 +104,7 @@ dv_trans_data_to_ssl(int tun_fd, void *ssl, dv_buffer_t *buf,
             if (wlen == -DV_EWANT_WRITE) {
                 wlen = 0;
             } else {
-                fprintf(stderr, "Send data failed! mlen = %d\n", (int)rlen);
+                DV_LOG(DV_LOG_INFO, "Send data failed! mlen = %d\n", (int)rlen);
                 suite->ps_shutdown(ssl);
                 return DV_ERROR;
             } 
@@ -188,7 +187,6 @@ dv_ssl_read_handler(int sock, short event, void *arg, void *ssl, int tun_fd,
     int                     data_len = 0;
     int                     ret = DV_ERROR;
 
-    DV_LOG(DV_LOG_INFO, "SSL data in!\n");
     while (1) {
         rlen = suite->ps_read(ssl, rbuf->bf_tail, rbuf->bf_bsize - 
                 (rbuf->bf_tail - rbuf->bf_buf));
