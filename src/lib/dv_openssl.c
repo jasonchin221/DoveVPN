@@ -118,13 +118,17 @@ dv_openssl_ctx_use_private_key_file(void *ctx, const char *file)
 static int 
 dv_openssl_ctx_set_ciphers(void *ctx)
 {    
-    int      nid = 0;
-    EC_KEY  *ecdh = NULL;
-    char    *name = "prime256v1";
+    EC_KEY      *ecdh = NULL;
+    char        *name = "prime256v1";
+    int         nid = 0;
+    int         i = 0;
 
-    if (SSL_CTX_set_cipher_list(ctx, DV_DEF_SERVER_CIPHERS) == 0) {
-        printf("Set cipher %s\n", DV_DEF_SERVER_CIPHERS);
-        return DV_ERROR;
+    for (i = 0; strlen(dv_proto_ciphers[i]) != 0; i++) {
+        DV_LOG(DV_LOG_INFO, "Cipher %s\n", dv_proto_ciphers[i]);
+        if (SSL_CTX_set_cipher_list(ctx, dv_proto_ciphers[i]) == 0) {
+            DV_LOG(DV_LOG_INFO, "Set cipher error!\n");
+            return DV_ERROR;
+        }
     }
 
     /*
@@ -136,13 +140,13 @@ dv_openssl_ctx_set_ciphers(void *ctx)
 
     nid = OBJ_sn2nid((const char *)name);
     if (nid == 0) {
-        printf("Nid error!\n");
+        DV_LOG(DV_LOG_INFO, "Nid error!\n");
         return DV_ERROR;
     }
 
     ecdh = EC_KEY_new_by_curve_name(nid);
     if (ecdh == NULL) {
-        printf("Unable to create curve \"%s\"", name);
+        DV_LOG(DV_LOG_INFO, "Unable to create curve \"%s\"", name);
         return DV_ERROR;
     }
 
@@ -193,7 +197,7 @@ dv_openssl_error(void *s, int ret)
         return -DV_EWANT_WRITE;
     }
 
-    fprintf(stderr, "sslerr = %d, err = %ld\n", sslerr, ERR_get_error());
+    DV_LOG(DV_LOG_INFO, "sslerr = %d, err = %ld\n", sslerr, ERR_get_error());
     return DV_ERROR;
 }
 
@@ -277,13 +281,13 @@ dv_openssl_set_verify(void *ctx, int mode, char *peer_cf)
     SSL_CTX_set_verify_depth(ctx, 1);
 
     if (SSL_CTX_load_verify_locations(ctx, peer_cf, NULL) == 0) {
-        fprintf(stderr, "Load verify locations %s failed\n", peer_cf);
+        DV_LOG(DV_LOG_INFO, "Load verify locations %s failed\n", peer_cf);
         exit(1);
     }
     
     list = SSL_load_client_CA_file(peer_cf);
     if (list == NULL) {
-        fprintf(stderr, "Load client ca file %s failed\n", peer_cf);
+        DV_LOG(DV_LOG_INFO, "Load client ca file %s failed\n", peer_cf);
         exit(1);
     }
 
@@ -297,7 +301,7 @@ dv_openssl_get_verify_result(void *s)
 
     ret = SSL_get_verify_result(s);
     if (ret != X509_V_OK) {
-        fprintf(stderr, "Verify ret is %ld\n", ret);
+        DV_LOG(DV_LOG_INFO, "Verify ret is %ld\n", ret);
         return DV_ERROR;
     }
 

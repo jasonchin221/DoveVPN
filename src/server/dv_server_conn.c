@@ -153,6 +153,7 @@ dv_srv_conn_destroy(dv_srv_conn_t *conn)
         close(conn->sc_fd);
         conn->sc_fd = -1;
     }
+    DV_LOG(DV_LOG_INFO, "SSL out!\n");
 }
 
 void

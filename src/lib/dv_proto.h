@@ -1,10 +1,12 @@
 #ifndef __DV_PROTO_H__
 #define __DV_PROTO_H__
 
-#define DV_DEF_SERVER_CIPHERS   "ECDHE-RSA-AES128-GCM-SHA256"
-#define DV_PROTO_OPENSSL        "openssl"
-#define DV_PROTO_DOVESSL        "dovessl"
-#define DV_PROTO_PLAINTEXT      "plaintext"
+#define DV_DEF_SERVER_CIPHERS       "ECDHE-RSA-AES128-GCM-SHA256"
+#define DV_PROTO_CIPHER_MAX_NUM     16
+#define DV_PROTO_CIPHER_NAME_LEN    128
+#define DV_PROTO_OPENSSL            "openssl"
+#define DV_PROTO_DOVESSL            "dovessl"
+#define DV_PROTO_PLAINTEXT          "plaintext"
 
 enum {
     DV_PROTO_TYPE_NONE,
@@ -43,6 +45,7 @@ typedef struct _dv_proto_suite_t {
     int     (*ps_get_verify_result)(void *s);
 } dv_proto_suite_t;
 
+extern char dv_proto_ciphers[DV_PROTO_CIPHER_MAX_NUM][DV_PROTO_CIPHER_NAME_LEN];
 extern const dv_proto_suite_t dv_suite_openssl;
 extern const dv_proto_suite_t *dv_proto_suite_find(const char *name);
 

@@ -9,11 +9,14 @@
 #include "dv_conf.h"
 #include "dv_errno.h"
 #include "dv_debug.h"
+#include "dv_proto.h"
 
 #define DV_CIPHER_CONF_PROTO_TYPE      "type"
 #define DV_CIPHER_CONF_CERT            "cert"
 #define DV_CIPHER_CONF_KEY             "key"
 #define DV_CIPHER_CONF_CA              "ca"
+#define DV_CIPHER_CONF_CIPHERS         "ciphers"
+#define DV_CIPHER_CONF_CIPHER          "cipher"
 
 static dv_cipher_conf_t dv_cipher_config;
 
@@ -148,9 +151,74 @@ out:
     return ret;
 }
 
+static int
+dv_cipher_conf_parse_ciphers(dv_cipher_conf_t *conf, char *key_word, char *file)
+{
+    json_object             *obj = NULL;
+    json_object             *sub_obj = NULL;
+    json_object             *a_obj = NULL;
+    json_object             *param = NULL;
+    json_object             *p = NULL;
+    const char              *val_str = NULL;
+    int                     len = 0;
+    int                     type = 0;
+    int                     i = 0;
+    int                     ret = DV_OK;
+
+    obj = dv_conf_parse(file, key_word, &sub_obj);
+    if (obj == NULL) {
+        DV_LOG(DV_LOG_EMERG, "Parse %s failed!\n", key_word);
+        ret = DV_ERROR;
+        goto out;
+    }
+
+    if (!json_object_object_get_ex(sub_obj, DV_CIPHER_CONF_CIPHERS, &p)) {
+        DV_LOG(DV_LOG_EMERG, "Parse %s failed!\n", DV_CIPHER_CONF_CIPHERS);
+        ret = DV_ERROR;
+        goto out;
+    }
+
+    len = json_object_array_length(p);
+    for (i = 0; i < len && i < DV_PROTO_CIPHER_MAX_NUM; i++) {
+        a_obj = json_object_array_get_idx(p, i);
+        type = json_object_get_type(a_obj);
+        if (type != json_type_object) {
+            goto out;
+        }
+        if (!json_object_object_get_ex(a_obj, DV_CIPHER_CONF_CIPHER, &param)) {
+            DV_LOG(DV_LOG_EMERG, "Missing %s!\n", DV_CIPHER_CONF_CIPHER);
+            goto out;
+        }
+
+        type = json_object_get_type(param);
+        if (type != json_type_string) {
+            goto out;
+        }
+        val_str = json_object_get_string(param);
+        if (val_str == NULL) {
+            goto out;
+        }
+        strncpy(dv_proto_ciphers[i], val_str, sizeof(dv_proto_ciphers[i]) - 1);
+    }
+
+out:
+    if (obj != NULL) {
+        json_object_put(obj);
+    }
+    return ret;
+}
+
 int
 dv_cipher_conf_parse(dv_cipher_conf_t *conf, char *key_word, char *file)
 {
-    return dv_config_parse(file, conf, key_word, dv_cipher_conf,
+    int                 ret = DV_OK;
+
+    ret = dv_config_parse(file, conf, key_word, dv_cipher_conf,
             DV_CIPHER_CONF_ARRAY_SIZE);
+    if (ret != DV_OK) {
+        return ret;
+    }
+
+    return dv_cipher_conf_parse_ciphers(conf, key_word, file);
 }
+
