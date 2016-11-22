@@ -13,6 +13,7 @@
 #include "dv_mem.h"
 #include "dv_server_conn.h"
 #include "dv_server_core.h"
+#include "dv_server_cycle.h"
 
 #define DV_SRV_CONN_POOL_SHM_KEY    (IPC_PRIVATE)
 
@@ -53,6 +54,7 @@ dv_srv_conn_pool_init(dv_u32 max_conn, size_t bufsize)
     INIT_LIST_HEAD(&dv_srv_conn_pool->cp_list_used);
     INIT_LIST_HEAD(&dv_srv_conn_pool->cp_list_free);
     dv_srv_conn_pool->cp_used_num = 0;
+    dv_srv_conn_pool->cp_child_count = 0;
 
     conn = (void *)(dv_srv_conn_pool + 1);
     for (i = 0; i < max_conn; i++, conn = (void *)((dv_u8 *)conn + size)) {
@@ -160,11 +162,25 @@ dv_srv_conn_pool_free(dv_srv_conn_t *conn)
 
     dv_srv_conn_destroy(conn);
 
-    pthread_spin_lock(&dv_srv_conn_pool->cp_lock);
+    if (!list_empty(&conn->sc_list_head)) {
+        pthread_spin_lock(&dv_srv_conn_pool->cp_lock);
+        list_del_init(&conn->sc_list_head);
+        list_add_tail(&conn->sc_list_head, &dv_srv_conn_pool->cp_list_free);
+        dv_srv_conn_pool->cp_used_num--;
+        pthread_spin_unlock(&dv_srv_conn_pool->cp_lock);
+    }
+}
+
+static void
+_dv_srv_conn_pool_free(dv_srv_conn_t *conn)
+{
+    dv_assert(dv_srv_conn_pool != NULL);
+
     list_del_init(&conn->sc_list_head);
+    dv_srv_conn_destroy(conn);
     list_add_tail(&conn->sc_list_head, &dv_srv_conn_pool->cp_list_free);
+
     dv_srv_conn_pool->cp_used_num--;
-    pthread_spin_unlock(&dv_srv_conn_pool->cp_lock);
 }
 
 void
@@ -174,6 +190,7 @@ dv_srv_conn_pool_destroy(void)
     struct list_head    *pos = NULL;
     struct list_head    *n = NULL;
     pid_t               pid = getpid();
+    int                 destroy = 0;
     int                 ret = 0;
 
     if (dv_srv_conn_pool == NULL) {
@@ -181,15 +198,33 @@ dv_srv_conn_pool_destroy(void)
     }
 
     pthread_spin_lock(&dv_srv_conn_pool->cp_lock);
+    DV_LOG(DV_LOG_INFO, "SSL data in!\n");
     list_for_each_safe(pos, n, &dv_srv_conn_pool->cp_list_used) {
         conn = dv_container_of(pos, dv_srv_conn_t, sc_list_head);
         if (pid == conn->sc_pid) {
-            dv_srv_conn_pool_free(conn);
+            _dv_srv_conn_pool_free(conn);
         }
+    }
+    DV_LOG(DV_LOG_INFO, "SSL data in!\n");
+    if (dv_process == DV_PROCESS_WORKER) {
+        dv_srv_conn_pool->cp_child_count++;
     }
     pthread_spin_unlock(&dv_srv_conn_pool->cp_lock);
 
-    pthread_spin_destroy(&dv_srv_conn_pool->cp_lock);
+    if (dv_process == DV_PROCESS_MASTER) {
+        while (1) {
+            pthread_spin_lock(&dv_srv_conn_pool->cp_lock);
+            destroy = (dv_srv_conn_pool->cp_child_count == dv_ncpu);
+            pthread_spin_unlock(&dv_srv_conn_pool->cp_lock);
+            if (destroy) {
+                break;
+            }
+            DV_LOG(DV_LOG_INFO, "Waiting for child quit! child_count = %u\n",
+                    dv_srv_conn_pool->cp_child_count);
+            sleep(1);
+        }
+        pthread_spin_destroy(&dv_srv_conn_pool->cp_lock);
+    }
     shmdt(dv_srv_conn_pool);
     ret = shmctl(dv_srv_conn_pool_shmid, IPC_RMID, NULL);
     if (ret != 0) {

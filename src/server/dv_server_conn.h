@@ -31,6 +31,7 @@ typedef struct _dv_srv_conn_pool_t {
     struct list_head    cp_list_used;
     struct list_head    cp_list_free;
     pthread_spinlock_t  cp_lock;
+    dv_u32              cp_child_count;
     dv_u32              cp_used_num;
 } dv_srv_conn_pool_t; 
 
