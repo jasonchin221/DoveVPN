@@ -1,7 +1,6 @@
 #ifndef __DV_PROTO_H__
 #define __DV_PROTO_H__
 
-#define DV_DEF_SERVER_CIPHERS       "ECDHE-RSA-AES128-GCM-SHA256"
 #define DV_PROTO_CIPHER_MAX_NUM     16
 #define DV_PROTO_CIPHER_NAME_LEN    128
 #define DV_PROTO_OPENSSL            "openssl"

@@ -173,8 +173,7 @@ dv_cipher_conf_parse_ciphers(dv_cipher_conf_t *conf, char *key_word, char *file)
     }
 
     if (!json_object_object_get_ex(sub_obj, DV_CIPHER_CONF_CIPHERS, &p)) {
-        DV_LOG(DV_LOG_EMERG, "Parse %s failed!\n", DV_CIPHER_CONF_CIPHERS);
-        ret = DV_ERROR;
+        DV_LOG(DV_LOG_INFO, "Parse %s failed!\n", DV_CIPHER_CONF_CIPHERS);
         goto out;
     }
 

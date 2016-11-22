@@ -4,7 +4,9 @@
 #include "dv_errno.h"
 #include "dv_types.h"
 
-char dv_proto_ciphers[DV_PROTO_CIPHER_MAX_NUM][DV_PROTO_CIPHER_NAME_LEN];
+char dv_proto_ciphers[DV_PROTO_CIPHER_MAX_NUM][DV_PROTO_CIPHER_NAME_LEN] = {
+    {"ECDHE-RSA-AES128-GCM-SHA256"},
+};
 
 static const dv_proto_suite_t *dv_proto_suite[] = {
     &dv_suite_openssl,
