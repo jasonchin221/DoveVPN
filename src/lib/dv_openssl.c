@@ -123,7 +123,11 @@ dv_openssl_ctx_set_ciphers(void *ctx)
     int         nid = 0;
     int         i = 0;
 
-    for (i = 0; strlen(dv_proto_ciphers[i]) != 0; i++) {
+    for (i = 0; strlen(dv_proto_ciphers[i]) != 0; i++);
+    if (i > 0) {
+        i--;
+    }
+    for (; i >= 0; i--) {
         DV_LOG(DV_LOG_INFO, "Cipher %s\n", dv_proto_ciphers[i]);
         if (SSL_CTX_set_cipher_list(ctx, dv_proto_ciphers[i]) == 0) {
             DV_LOG(DV_LOG_INFO, "Set cipher error!\n");
