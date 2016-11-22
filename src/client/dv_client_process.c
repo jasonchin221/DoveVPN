@@ -103,7 +103,6 @@ dv_cli_tun_to_ssl(int sock, short event, void *arg)
     int                     tun_fd = conn->cc_tun_fd;
     int                     ret = DV_ERROR;
 
-   DV_LOG(DV_LOG_INFO, "Client tun package arrived!\n");
     while (1) {
         ret = dv_trans_data_to_ssl(tun_fd, ssl, conn->cc_wbuf,
                 suite, &dv_trans_buf, 0);
