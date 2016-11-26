@@ -47,7 +47,7 @@ dv_srv_create_and_set_tun(dv_tun_t *tun, int seq, int mask, int mtu,
     dv_subnet_ip_t  *ip = NULL;
     int             ret = DV_ERROR;
 
-    ret = dv_tun_dev_create(tun, seq);
+    ret = dv_tun_dev_create(tun, (int)getpid());
     if (ret != DV_OK) {
         DV_LOG(DV_LOG_INFO, "Tun create failed!\n");
         return DV_ERROR;
