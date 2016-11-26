@@ -32,3 +32,4 @@ src/.dirstamp
 src/client/dove_vpn_client
 src/server/dove_vpn_server
 src/tools/dove_tunctl
+test/src/dove_test_client
