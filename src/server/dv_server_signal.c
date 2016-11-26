@@ -7,6 +7,7 @@
 #include "dv_log.h"
 #include "dv_server_signal.h"
 #include "dv_server_cycle.h"
+#include "dv_server_conn.h"
 
 static void dv_srv_signal_handler(int signo);
 
@@ -17,7 +18,7 @@ static dv_signal_t dv_srv_signals[] = {
 
     { SIGQUIT, "SIGQUIT", "quit", dv_srv_signal_handler },
 
-    { SIGUSR1, "SIGUSR1", "", dv_srv_signal_handler },
+    { SIGUSR1, "SIGUSR1", "conn", dv_srv_signal_handler },
 
     { SIGALRM, "SIGALRM", "", dv_srv_signal_handler },
 
@@ -48,6 +49,9 @@ dv_srv_signal_handler(int signo)
             break;
         case SIGHUP:
             dv_reconfigure = 1;
+            break;
+        case SIGUSR1:
+            DV_LOG(DV_LOG_INFO, "Conn num = (%u)!\n", dv_srv_conn_num_get());
             break;
         default:
             DV_LOG(DV_LOG_INFO, "Other signal(%d)!\n", signo);
