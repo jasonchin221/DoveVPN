@@ -23,7 +23,7 @@ typedef struct _dv_test_conf_t {
 typedef struct _dv_test_conf_parse_t {
     char        *cp_name;
     int         cp_type;
-    int         (*cp_proc)(json_object *param);
+    int         (*cp_parse)(dv_backend_addr_t *addr, json_object *param);
 } dv_test_conf_parse_t;
 
 extern int dv_test_conf_parse(dv_srv_conf_t *conf, char *file);

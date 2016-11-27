@@ -275,11 +275,8 @@ dv_client_process(dv_client_conf_t *conf)
 
 out:
     dv_cli_conn_free(&conn);
-    DV_LOG(DV_LOG_INFO, "SSL data in!\n");
     dv_event_destroy(ssl_rev);
-    DV_LOG(DV_LOG_INFO, "SSL data in!\n");
     dv_event_destroy(ssl_wev);
-    DV_LOG(DV_LOG_INFO, "SSL data in!\n");
     dv_event_destroy(tun_rev);
     if (ssl != NULL) {
         suite->ps_shutdown(ssl);

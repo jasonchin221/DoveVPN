@@ -1,6 +1,8 @@
 
 #include "dv_types.h"
 #include "dv_errno.h"
+#include "dv_proto.h"
+#include "dv_log.h"
 #include "dv_test_conf.h"
 
 #define DV_TEST_LOG_NAME     "DoveVPN-test-client"
