@@ -30,7 +30,7 @@ sig_atomic_t dv_quit;
 sig_atomic_t dv_reconfigure;
 sig_atomic_t dv_terminate;
 dv_u8 dv_process;
-dv_u8 dv_worker;
+static dv_u8 dv_worker;
 dv_u8 dv_exiting;
 int dv_argc;
 char **dv_argv;
@@ -249,7 +249,7 @@ dv_worker_channel_read_handler(int sock, short event, void *arg)
     }
 }
 
-static void
+void
 dv_worker_process_init(int worker)
 {
     sigset_t    set = {};
@@ -342,7 +342,7 @@ dv_start_worker_processes(void *cycle, dv_u32 child_num)
     return DV_OK;
 }
 
-static void
+void
 dv_reap_children(int cmd)
 {
     dv_channel_t    ch = {};
@@ -363,8 +363,9 @@ dv_reap_children(int cmd)
     }
 }
 
-static int
-dv_master_process_cycle(dv_srv_conf_t *conf, dv_u32 cpu_num)
+int
+_dv_master_process_cycle(dv_srv_conf_t *conf, dv_u32 cpu_num,
+        int (*start_worker_processes)(void *, dv_u32))
 {
     char                *title = NULL;
     char                *p = NULL;
@@ -414,7 +415,7 @@ dv_master_process_cycle(dv_srv_conf_t *conf, dv_u32 cpu_num)
 
     dv_process = DV_PROCESS_MASTER;
 
-    ret = dv_start_worker_processes(conf, cpu_num);
+    ret = start_worker_processes(conf, cpu_num);
     if (ret != DV_OK) {
         DV_LOG(DV_LOG_ALERT, "Start worker process failed!\n");
         return DV_ERROR;
@@ -438,6 +439,12 @@ dv_master_process_cycle(dv_srv_conf_t *conf, dv_u32 cpu_num)
             dv_server_process_exit();
         }
     }
+}
+
+static int
+dv_master_process_cycle(dv_srv_conf_t *conf, dv_u32 cpu_num)
+{
+    return _dv_master_process_cycle(conf, cpu_num, dv_start_worker_processes);
 }
 
 int

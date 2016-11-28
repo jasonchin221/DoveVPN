@@ -173,7 +173,7 @@ _dv_ip_pool_init(dv_ip_pool_t *pool, char *subnet_ip, dv_u32 len, int mask,
             continue;
         }
         ret = create->pc_gen_ip(ip_array->si_ip, sizeof(ip_array->si_ip),
-                subnet_ip, mask, worker, i, &ip_array->si_addr);
+                subnet_ip, mask, worker, i, &ip_array->si_addr4);
         if (ret != DV_OK) {
             goto out;
         }
@@ -264,6 +264,7 @@ _dv_ip_pool_exit(dv_ip_pool_t *pool)
 
     dv_ip_hash_exit(&pool->ip_hash_table);
     dv_free(pool->ip_array);
+    pool->ip_array = NULL;
     INIT_LIST_HEAD(&pool->ip_list_head);
 }
 
@@ -289,7 +290,7 @@ dv_ip_hash_add(dv_subnet_ip_t *ip)
     table = dv_ip_pool.ip_hash_table;
     dv_assert(table != NULL);
 
-    hash = dv_ip_hash_get(&ip->si_addr, table->ih_key_len);
+    hash = dv_ip_hash_get(&ip->si_addr4, table->ih_key_len);
     head = &table->ih_table[hash];
     list_add(&ip->si_list_hash, head);
     table->ih_num++;
@@ -330,7 +331,7 @@ dv_ip_hash_find(dv_ip_pool_t *pool, const void *key, size_t len)
 
     list_for_each_prev(pos, head) {
         ip = dv_container_of(pos, dv_subnet_ip_t, si_list_hash);
-        if (memcmp(key, &ip->si_addr, len) == 0) {
+        if (memcmp(key, &ip->si_addr4, len) == 0) {
             return ip;
         }
     }
