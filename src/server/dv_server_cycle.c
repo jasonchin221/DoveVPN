@@ -76,7 +76,7 @@ err:
     return ret;
 }
 
-static int
+int
 dv_server_create_pidfile(char *file)
 {
     FILE    *fp = NULL;

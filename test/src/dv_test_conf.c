@@ -1,6 +1,8 @@
 
 
 #include "dv_errno.h"
+#include "dv_lib.h"
+#include "dv_log.h"
 #include "dv_test_conf.h"
 
 #define DV_TEST_CONF_BACKEND    "backend"
@@ -9,16 +11,16 @@ dv_test_conf_t dv_test_conf;
 static int dv_test_ip_parse(dv_backend_addr_t *addr, json_object *param);
 static int dv_test_port_parse(dv_backend_addr_t *addr, json_object *param);
 
-static dv_test_conf_parse_t dv_test_conf_paser = {
+static dv_test_conf_parse_t dv_test_conf_paser[] = {
     {
         .cp_name = "ip",
         .cp_type = json_type_string,
-        .cp_parse = dv_test_ip_parse,
+        .cp_parser = dv_test_ip_parse,
     },
     {
         .cp_name = "port",
         .cp_type = json_type_int,
-        .cp_parse = dv_test_port_parse,
+        .cp_parser = dv_test_port_parse,
     },
 };
 
@@ -27,7 +29,7 @@ static dv_test_conf_parse_t dv_test_conf_paser = {
 static int
 dv_test_ip_parse(dv_backend_addr_t *addr, json_object *param)
 {
-    char    *ip = NULL;
+    const char      *ip = NULL;
 
     ip = json_object_get_string(param);
     if (ip == NULL) {
@@ -48,18 +50,22 @@ dv_test_ip_parse(dv_backend_addr_t *addr, json_object *param)
 static int 
 dv_test_port_parse(dv_backend_addr_t *addr, json_object *param)
 {
-    int     port = 0;
+    struct sockaddr     *sk = NULL;
+    int                 port = 0;
 
+    sk = (struct sockaddr *)&addr->ba_addr;
     port = json_object_get_int(param);
-    if (dv_ip_version4(ip)) {
+    if (sk->sa_family == AF_INET) {
         addr->ba_addr.ba_addr4.sin_port = DV_HTONS(port);
     } else {
         addr->ba_addr.ba_addr6.sin6_port = DV_HTONS(port);
     }
+
+    return DV_OK;
 }
 
 int
-dv_test_conf_parse(dv_ser_conf_t *conf, char *file)
+dv_test_conf_parse(dv_srv_conf_t *conf, char *file)
 {
     json_object             *obj = NULL;
     json_object             *sub_obj = NULL;

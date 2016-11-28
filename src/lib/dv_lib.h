@@ -40,7 +40,7 @@ dv_pow(dv_u32 x, dv_u32 y)
 }
 
 static inline int 
-dv_ip_version4(char *ip)
+dv_ip_version4(const char *ip)
 {
     return (strstr(ip, ":") == NULL);
 }

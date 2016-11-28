@@ -23,5 +23,6 @@ extern dv_u8 dv_process;
 
 extern int dv_server_cycle(dv_srv_conf_t *conf);
 extern int dv_server_send_signal(char *pid_file, char *cmd);
+extern int dv_server_create_pidfile(char *file);
 
 #endif

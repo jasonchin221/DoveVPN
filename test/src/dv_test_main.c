@@ -64,7 +64,7 @@ main(int argc, char **argv)
 {
     char                    *cf = NULL;
     char                    *cmd = NULL;
-    dv_test_conf_t          conf = {};
+    dv_srv_conf_t           conf = {};
     int                     c = 0;
     int                     ret = 0;
 
@@ -105,7 +105,7 @@ main(int argc, char **argv)
     }
 
     if (cmd != NULL) {
-        return -dv_server_send_signal(conf.cf_core.sc_pid_file, cmd);
+        return -dv_server_send_signal(conf.sc_pid_file, cmd);
     }
 
     dv_argc = argc;
