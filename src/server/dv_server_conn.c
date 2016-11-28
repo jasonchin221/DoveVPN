@@ -85,7 +85,7 @@ dv_srv_conn_pool_release(void *conn)
 }
 
 static void
-dv_srv_conn_init(dv_srv_conn_t *conn, int fd, void *ssl, dv_u32 flag)
+dv_srv_conn_init(dv_srv_conn_t *conn, int fd, void *ssl)
 {
     dv_event_t          *rev = NULL;
     dv_event_t          *wev = NULL;
@@ -129,7 +129,7 @@ dv_srv_conn_pool_alloc(int fd, void *ssl)
     pthread_spin_unlock(&dv_srv_conn_pool->cp_lock);
 
     conn = dv_container_of(list, dv_srv_conn_t, sc_list_head);
-    dv_srv_conn_init(conn, fd, ssl, DV_SRV_CONN_FLAG_POOL);
+    dv_srv_conn_init(conn, fd, ssl);
 
     return conn;
 }

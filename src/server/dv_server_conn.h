@@ -10,9 +10,6 @@
 #include "dv_event.h"
 #include "dv_types.h"
 
-#define DV_SRV_CONN_FLAG_POOL       0x01
-#define DV_SRV_CONN_FLAG_MEM        0x02
-
 typedef struct _dv_srv_conn_t {
     struct list_head    sc_list_head;
     void                *sc_ssl;

@@ -25,7 +25,8 @@
 #include "dv_socket.h"
 #include "dv_assert.h"
 
-#define DV_TEST_LOG_NAME     "DoveVPN-test-client"
+#define DV_TEST_LOG_NAME        "DoveVPN-test-client"
+#define DV_TEST_CONN_FIN        0x02
 
 extern void *dv_client_ctx;
 extern int _dv_master_process_cycle(dv_srv_conf_t *conf, dv_u32 cpu_num,
@@ -78,6 +79,41 @@ dv_ip_addr6(void *h, struct sockaddr_in6 *addr)
     return DV_OK;
 }
 
+static struct tcphdr *
+dv_tcp_header(void *h)
+{
+    struct iphdr            *ip4 = h;
+    struct ip6_hdr          *ip6 = h;
+    struct tcphdr           *th = NULL;
+
+    if (dv_ip_is_v4(h)) {
+        th = (void *)((char *)ip4 + ip4->ihl*4);
+    } else {
+        th = (void *)(ip6 + 1);
+    }
+
+    return th;
+}
+
+static int
+dv_tcp_flag_fin(void *h)
+{
+    struct tcphdr      *th;
+
+    th = dv_tcp_header(h);
+
+    return th->fin;
+}
+
+static int
+dv_tcp_flag_rst(void *h)
+{
+    struct tcphdr      *th;
+
+    th = dv_tcp_header(h);
+
+    return th->rst;
+}
 
 static int
 dv_test_init(dv_srv_conf_t *conf)
@@ -396,15 +432,16 @@ dv_test_tun_to_ssl(int sock, short event, void *arg)
     const dv_proto_suite_t  *suite = dv_srv_ssl_proto_suite;
     void                    *ssl = NULL;
     void                    *key = NULL;
-    size_t                  ksize = 0;
     struct sockaddr_in      in4 = {
         .sin_family = AF_INET,
     };
     struct sockaddr_in6     in6 = {
         .sin6_family = AF_INET6,
     };
-    int                     tun_fd = dv_test_tun.tn_fd;
+    size_t                  ksize = 0;
     ssize_t                 rlen = 0;
+    int                     close = 0;
+    int                     tun_fd = dv_test_tun.tn_fd;
     int                     ret = DV_ERROR;
 
     rlen = read(sock, tbuf->tb_buf, tbuf->tb_buf_size);
@@ -444,12 +481,26 @@ dv_test_tun_to_ssl(int sock, short event, void *arg)
 
     wbuf = &conn->sc_wbuf;
     ssl = conn->sc_ssl;
+    if (dv_tcp_flag_rst(tbuf->tb_buf)) {
+        close = 1;
+    } else if (dv_tcp_flag_fin(tbuf->tb_buf)) {
+        if (conn->sc_flags & DV_TEST_CONN_FIN) {
+            close = 1;
+        } else {
+            conn->sc_flags |= DV_TEST_CONN_FIN;
+        }
+    }
+
     ret = dv_trans_data_to_ssl(tun_fd, ssl, wbuf, suite, tbuf, rlen);
     if (ret == -DV_EWANT_WRITE) {
         if (dv_event_add(wev) != DV_OK) {
             DV_LOG(DV_LOG_INFO, "Add wev failed!\n");
             return;
         }
+    }
+    if (close != 0) {
+        dv_srv_conn_pool_free(conn);
+        return;
     }
 }
 
