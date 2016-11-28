@@ -36,13 +36,7 @@ dv_test_ip_parse(dv_backend_addr_t *addr, json_object *param)
         return DV_ERROR;
     }
 
-    if (dv_ip_version4(ip)) {
-        addr->ba_addr.ba_addr4.sin_family = AF_INET,
-        addr->ba_addr.ba_addr4.sin_addr.s_addr = inet_addr(ip);
-    } else {
-        addr->ba_addr.ba_addr6.sin6_family = AF_INET6,
-        inet_pton(AF_INET6, ip, &addr->ba_addr.ba_addr6);
-    }
+    strncpy(addr->ba_addr, ip, sizeof(addr->ba_addr));
 
     return DV_OK;
 }
@@ -50,16 +44,7 @@ dv_test_ip_parse(dv_backend_addr_t *addr, json_object *param)
 static int 
 dv_test_port_parse(dv_backend_addr_t *addr, json_object *param)
 {
-    struct sockaddr     *sk = NULL;
-    int                 port = 0;
-
-    sk = (struct sockaddr *)&addr->ba_addr;
-    port = json_object_get_int(param);
-    if (sk->sa_family == AF_INET) {
-        addr->ba_addr.ba_addr4.sin_port = DV_HTONS(port);
-    } else {
-        addr->ba_addr.ba_addr6.sin6_port = DV_HTONS(port);
-    }
+    addr->ba_port = json_object_get_int(param);
 
     return DV_OK;
 }

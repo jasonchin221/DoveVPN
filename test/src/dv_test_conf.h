@@ -8,10 +8,8 @@
 #define DV_CONF_BACKEND_ADDR_MAX_NUM        128
 
 typedef struct _dv_backend_addr_t {
-    union {
-        struct sockaddr_in  ba_addr4;
-        struct sockaddr_in6 ba_addr6;
-    } ba_addr;
+    char    ba_addr[DV_IP_ADDRESS_LEN];
+    dv_u16  ba_port;
 } dv_backend_addr_t;
 
 typedef struct _dv_test_conf_t {
@@ -25,6 +23,8 @@ typedef struct _dv_test_conf_parse_t {
     int         cp_type;
     int         (*cp_parser)(dv_backend_addr_t *addr, json_object *param);
 } dv_test_conf_parse_t;
+
+extern dv_test_conf_t dv_test_conf;
 
 extern int dv_test_conf_parse(dv_srv_conf_t *conf, char *file);
 

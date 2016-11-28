@@ -121,7 +121,7 @@ dv_srv_ssl_send_data(int sock, dv_event_t *ev, const dv_proto_suite_t *suite)
 static int
 dv_srv_ssl_handshake_done(int sock, dv_event_t *ev, const dv_proto_suite_t *suite)
 {
-    dv_srv_conn_t            *conn = ev->et_conn;
+    dv_srv_conn_t           *conn = ev->et_conn;
     dv_buffer_t             *wbuf = &conn->sc_wbuf;
     void                    *ssl = conn->sc_ssl;
     dv_subnet_ip_t          *ip = NULL;
@@ -133,16 +133,8 @@ dv_srv_ssl_handshake_done(int sock, dv_event_t *ev, const dv_proto_suite_t *suit
         return DV_ERROR;
     }
 
-    ip = dv_subnet_ip_alloc();
-    if (ip == NULL) {
-        DV_LOG(DV_LOG_INFO, "Alloc ip failed!\n");
-        return DV_ERROR;
-    }
-
-    ip->si_wev = &conn->sc_wev;
-    /* Send message to alloc ip address */
-    conn->sc_ip = ip;
-
+    ip = conn->sc_ip;
+    
     mlen = dv_msg_ipalloc_build(wbuf->bf_head, wbuf->bf_bsize,
             ip->si_ip, strlen(ip->si_ip) + 1, dv_get_subnet_mask(),
             dv_get_subnet_mtu(), dv_route_net, dv_route_mask);
@@ -153,14 +145,12 @@ dv_srv_ssl_handshake_done(int sock, dv_event_t *ev, const dv_proto_suite_t *suit
 
     wbuf->bf_tail += mlen;
 
-    dv_ip_hash_add(ip);
-
     ret = dv_srv_ssl_send_data(sock, ev, suite);
     if (ret != DV_OK) {
         return ret;
     }
 
-    conn->sc_flags &= ~DV_SK_CONN_FLAG_HANDSHAKED;
+    conn->sc_flags &= ~DV_SK_CONN_FLAG_HANDSHAKING;
 
     return DV_OK;
 }
@@ -170,7 +160,7 @@ dv_srv_ssl_handshake(int sock, short event, void *arg)
 {
     const dv_proto_suite_t  *suite = dv_srv_ssl_proto_suite;
     dv_event_t              *ev = arg; 
-    dv_srv_conn_t            *conn = ev->et_conn;
+    dv_srv_conn_t           *conn = ev->et_conn;
     void                    *ssl = NULL;
     int                     ret = DV_OK;
 
@@ -220,7 +210,7 @@ dv_srv_buf_to_ssl(int sock, short event, void *arg)
 
     ret = dv_buf_data_to_ssl(ssl, wbuf, suite);
     if (ret == DV_OK) {
-        conn->sc_flags &= ~DV_SK_CONN_FLAG_HANDSHAKED;
+        conn->sc_flags &= ~DV_SK_CONN_FLAG_HANDSHAKING;
         return;
     } 
     
@@ -242,6 +232,7 @@ _dv_srv_ssl_accept(int sock, short event, void *arg, struct sockaddr *addr,
     dv_event_t              *rev = NULL; 
     dv_event_t              *wev = NULL; 
     dv_srv_conn_t           *conn = NULL;
+    dv_subnet_ip_t          *ip = NULL;
     void                    *ssl = NULL;
     int                     accept_fd = 0;
     int                     ret = DV_OK;
@@ -278,9 +269,20 @@ _dv_srv_ssl_accept(int sock, short event, void *arg, struct sockaddr *addr,
     wev->et_handler = dv_srv_buf_to_ssl;
     dv_event_set_write(accept_fd, wev);
 
+    ip = dv_subnet_ip_alloc();
+    if (ip == NULL) {
+        DV_LOG(DV_LOG_INFO, "Alloc ip failed!\n");
+        goto free_conn;
+    }
+
+    ip->si_wev = &conn->sc_wev;
+    /* Send message to alloc ip address */
+    conn->sc_ip = ip;
+    dv_ip_hash_add(ip);
+
     /* 建立 SSL 连接 */
     ret = suite->ps_accept(ssl);
-    conn->sc_flags |= DV_SK_CONN_FLAG_HANDSHAKED;
+    conn->sc_flags |= DV_SK_CONN_FLAG_HANDSHAKING;
     switch (ret) {
         case DV_OK:
             ret = dv_srv_ssl_handshake_done(accept_fd, rev, suite);

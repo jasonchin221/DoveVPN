@@ -5,7 +5,7 @@
 #include "dv_assert.h"
 #include "dv_client_conf.h"
 
-static void *dv_client_ctx;
+void *dv_client_ctx;
 
 int
 dv_client_ssl_init(const dv_proto_suite_t *suite, dv_cipher_conf_t *conf)

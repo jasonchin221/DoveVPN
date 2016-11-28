@@ -1,3 +1,7 @@
+#include <netinet/tcp.h>
+#include <unistd.h>
+#include <fcntl.h>
+#include <errno.h>
 
 #include "dv_types.h"
 #include "dv_errno.h"
@@ -18,10 +22,12 @@
 #include "dv_if.h"
 #include "dv_ip_pool.h"
 #include "dv_server_socket.h"
+#include "dv_socket.h"
+#include "dv_assert.h"
 
 #define DV_TEST_LOG_NAME     "DoveVPN-test-client"
 
-static dv_event_t dv_test_tun_rev;
+extern void *dv_client_ctx;
 extern int _dv_master_process_cycle(dv_srv_conf_t *conf, dv_u32 cpu_num,
             int (*start_worker_processes)(void *, dv_u32));
 extern void dv_worker_process_init(int worker);
@@ -29,11 +35,49 @@ extern void dv_worker_process_exit(void);
 
 const dv_proto_suite_t *dv_test_ssl_proto_suite;
 
+static dv_event_t dv_test_tun_rev;
 static dv_u8 dv_worker;
 
 static dv_tun_t dv_test_tun = {
     .tn_fd = -1,
 };
+
+static int
+dv_ip_addr4(void *h, struct sockaddr_in *addr)
+{
+    struct iphdr            *ip = h;
+    struct tcphdr           *th = NULL;
+
+    addr->sin_addr.s_addr = ip->saddr; 
+    addr->sin_family = AF_INET;
+    if (ip->protocol != IPPROTO_TCP) {
+        return DV_ERROR;
+    }
+
+    th = (void *)((char *)ip + ip->ihl*4);
+    addr->sin_port = th->source;
+
+    return DV_OK;
+}
+
+static int
+dv_ip_addr6(void *h, struct sockaddr_in6 *addr)
+{
+    struct ip6_hdr          *ip = h;
+    struct tcphdr           *th = NULL;
+
+    addr->sin6_addr = ip->ip6_src; 
+    addr->sin6_family = AF_INET6;
+    if (ip->ip6_ctlun.ip6_un1.ip6_un1_nxt != IPPROTO_TCP) {
+        return DV_ERROR;
+    }
+
+    th = (void *)(ip + 1);
+    addr->sin6_port = th->source;
+
+    return DV_OK;
+}
+
 
 static int
 dv_test_init(dv_srv_conf_t *conf)
@@ -90,6 +134,258 @@ dv_test_single_process_cycle(dv_srv_conf_t *conf)
     return 0;
 }
 
+static int
+dv_test_ssl_err_handler(int sock, dv_event_t *ev, const dv_proto_suite_t *suite)
+{
+    DV_LOG(DV_LOG_INFO, "SSL data in!\n");
+    dv_event_destroy(ev);
+
+    return DV_ERROR;
+}
+
+static void
+dv_test_ssl_to_tun(int sock, short event, void *arg)
+{
+    dv_event_t              *ev = arg; 
+    dv_srv_conn_t           *conn = ev->et_conn;
+    void                    *ssl = conn->sc_ssl;
+    const dv_proto_suite_t  *suite = dv_test_ssl_proto_suite;
+    dv_buffer_t             *rbuf = &conn->sc_rbuf;
+    int                     tun_fd = dv_test_tun.tn_fd;
+
+    dv_ssl_read_handler(sock, event, arg, ssl, tun_fd, suite, rbuf,
+            dv_get_subnet_mtu(), dv_test_ssl_err_handler);
+}
+
+static int
+dv_test_ssl_send_data(int sock, dv_event_t *ev, const dv_proto_suite_t *suite)
+{
+    dv_srv_conn_t           *conn = ev->et_conn;
+    dv_buffer_t             *wbuf = &conn->sc_wbuf;
+    dv_event_t              *wev = &conn->sc_wev;
+    void                    *ssl = conn->sc_ssl;
+    int                     ret = DV_OK;
+
+    ev->et_handler = dv_test_ssl_to_tun;
+    dv_event_set_read(sock, ev);
+    ret = dv_buf_data_to_ssl(ssl, wbuf, suite);
+    if (ret == DV_OK) {
+        if (dv_event_add(ev) != DV_OK) {
+            DV_LOG(DV_LOG_INFO, "Add read event failed!\n");
+            return DV_ERROR;
+        }
+        return DV_OK;
+    } 
+    
+    if (ret == -DV_EWANT_WRITE) {
+        if (dv_event_add(ev) != DV_OK) {
+            DV_LOG(DV_LOG_INFO, "Add read event failed!\n");
+            return DV_ERROR;
+        }
+ 
+        if (dv_event_add(wev) != DV_OK) {
+            DV_LOG(DV_LOG_INFO, "Add write event failed!\n");
+            return DV_ERROR;
+        }
+        return DV_OK;
+    }
+ 
+    DV_LOG(DV_LOG_INFO, "Unknown return value %d!\n", ret);
+    return DV_ERROR;
+}
+
+static int
+dv_test_ssl_handshake_done(int sock, dv_event_t *ev, const dv_proto_suite_t *suite)
+{
+    dv_srv_conn_t           *conn = ev->et_conn;
+    void                    *ssl = conn->sc_ssl;
+
+    if (suite->ps_get_verify_result(ssl) != DV_OK) {
+        DV_LOG(DV_LOG_INFO, "Verify failed!\n");
+        return DV_ERROR;
+    }
+
+    conn->sc_flags &= ~DV_SK_CONN_FLAG_HANDSHAKING;
+
+    return dv_test_ssl_send_data(sock, ev, suite);
+}
+
+static void
+dv_test_ssl_handshake(int sock, short event, void *arg)
+{
+    const dv_proto_suite_t  *suite = dv_test_ssl_proto_suite;
+    dv_event_t              *ev = arg; 
+    dv_srv_conn_t           *conn = ev->et_conn;
+    void                    *ssl = NULL;
+    int                     ret = DV_OK;
+
+    ssl = conn->sc_ssl;
+    conn = ev->et_conn;
+
+    /* 建立 SSL 连接 */
+    ret = suite->ps_connect(ssl);
+    if (ret == DV_OK) {
+        ret = dv_test_ssl_handshake_done(sock, ev, suite);
+        if (ret == DV_ERROR) {
+            DV_LOG(DV_LOG_INFO, "Handshake done proc failed!\n");
+            goto out;
+        }
+        return;
+    }
+
+    if (ret == -DV_EWANT_READ) {
+        dv_event_set_read(sock, ev);
+        if (dv_event_add(ev) != DV_OK) {
+            goto out;
+        }
+        return;
+    }
+
+    if (ret == -DV_EWANT_WRITE) {
+        dv_event_set_write(sock, ev);
+        if (dv_event_add(ev) != DV_OK) {
+            goto out;
+        }
+        return;
+    }
+
+out:
+    dv_event_destroy(ev);
+}
+
+static void
+dv_test_buf_to_ssl(int sock, short event, void *arg)
+{
+    dv_event_t              *ev = arg; 
+    dv_srv_conn_t           *conn = ev->et_conn;
+    dv_buffer_t             *wbuf = &conn->sc_wbuf;
+    void                    *ssl = conn->sc_ssl;
+    const dv_proto_suite_t  *suite = dv_srv_ssl_proto_suite;
+    int                     ret = DV_OK;
+
+    ret = dv_buf_data_to_ssl(ssl, wbuf, suite);
+    if (ret == DV_OK) {
+        conn->sc_flags &= ~DV_SK_CONN_FLAG_HANDSHAKING;
+        return;
+    } 
+    
+    if (ret == -DV_EWANT_WRITE) {
+        if (dv_event_add(ev) == DV_OK) {
+            return;
+        }
+    }
+
+    dv_event_destroy(ev);
+}
+
+static int
+dv_test_ssl_connect(void *key, size_t len, void *data, ssize_t dlen)
+{
+    const dv_proto_suite_t  *suite = dv_test_ssl_proto_suite;
+    dv_backend_addr_t       *addr = NULL; 
+    dv_event_t              *rev = NULL; 
+    dv_event_t              *wev = NULL; 
+    dv_srv_conn_t           *conn = NULL;
+    dv_subnet_ip_t          *ip = NULL;
+    dv_buffer_t             *wbuf = NULL;
+    void                    *ssl = NULL;
+    int                     sockfd = 0;
+    int                     ret = DV_ERROR;
+
+    addr = &dv_test_conf.cf_backend_addrs[dv_test_conf.cf_curr];
+    dv_test_conf.cf_curr = (dv_test_conf.cf_curr + 1) %
+        dv_test_conf.cf_backend_addr_num;
+    if (dv_ip_version4(addr->ba_addr)) {
+        sockfd = dv_sk_connect_v4(addr->ba_addr, addr->ba_port);
+    } else {
+        sockfd = dv_sk_connect_v6(addr->ba_addr, addr->ba_port);
+    }
+
+    if (sockfd < 0) {
+        DV_LOG(DV_LOG_INFO, "Socket error!\n");
+        return DV_ERROR;
+    }
+
+    if (fcntl(sockfd, F_SETFL, O_NONBLOCK) == -1) {
+        DV_LOG(DV_LOG_INFO, "Set noblock failed(%s)!\n", strerror(errno));
+        goto out;
+    }
+
+    ssl = suite->ps_ssl_new(dv_client_ctx);
+    if (ssl == NULL) {
+        DV_LOG(DV_LOG_INFO, "New ssl failed!\n");
+        goto out;
+    }
+
+    suite->ps_set_fd(ssl, sockfd);
+
+    conn = dv_srv_conn_pool_alloc(sockfd, ssl);
+    if (conn == NULL) {
+        DV_LOG(DV_LOG_INFO, "Create conn failed!\n");
+        goto out;
+    }
+
+    rev = &conn->sc_rev;
+    wev = &conn->sc_wev;
+    wev->et_handler = dv_test_buf_to_ssl;
+    dv_event_set_write(sockfd, wev);
+
+    ip = dv_subnet_ip_alloc();
+    if (ip == NULL) {
+        DV_LOG(DV_LOG_INFO, "Alloc ip failed!\n");
+        goto out;
+    }
+
+    ip->si_wev = &conn->sc_wev;
+    /* Send message to alloc ip address */
+    conn->sc_ip = ip;
+    dv_ip_hash_add(ip);
+
+    ret = suite->ps_connect(ssl);
+    conn->sc_flags |= DV_SK_CONN_FLAG_HANDSHAKING;
+    wbuf = &conn->sc_wbuf;
+
+    dv_assert(wbuf->bf_bsize >= dlen);
+
+    memcpy(wbuf->bf_head, data, dlen);
+    wbuf->bf_tail = wbuf->bf_head + dlen;
+    switch (ret) {
+        case DV_OK:
+            ret = dv_test_ssl_handshake_done(sockfd, rev, suite);
+            if (ret == DV_ERROR) {
+                DV_LOG(DV_LOG_INFO, "Handshake done proc failed!\n");
+                goto out;
+            }
+            return DV_OK;
+        case -DV_EWANT_READ:
+            rev->et_handler = dv_test_ssl_handshake;
+            dv_event_set_read(sockfd, rev);
+            break;
+        case -DV_EWANT_WRITE:
+            rev->et_handler = dv_test_ssl_handshake;
+            dv_event_set_write(sockfd, rev);
+            break;
+        default:
+            goto out;
+    }
+
+    if (dv_event_add(rev) != DV_OK) {
+        DV_LOG(DV_LOG_INFO, "Add rev failed!\n");
+        goto out;
+    }
+
+    return ret;
+
+out:
+    if (conn != NULL) {
+        dv_srv_conn_pool_free(conn);
+    } else {
+        close(sockfd);
+    }
+
+    return DV_ERROR;
+}
+
 static void
 dv_test_tun_to_ssl(int sock, short event, void *arg)
 {
@@ -98,9 +394,15 @@ dv_test_tun_to_ssl(int sock, short event, void *arg)
     dv_buffer_t             *wbuf = NULL;
     dv_srv_conn_t           *conn = NULL;
     const dv_proto_suite_t  *suite = dv_srv_ssl_proto_suite;
-    struct iphdr            *ip4 = NULL;
-    struct ip6_hdr          *ip6 = NULL;
     void                    *ssl = NULL;
+    void                    *key = NULL;
+    size_t                  ksize = 0;
+    struct sockaddr_in      in4 = {
+        .sin_family = AF_INET,
+    };
+    struct sockaddr_in6     in6 = {
+        .sin6_family = AF_INET6,
+    };
     int                     tun_fd = dv_test_tun.tn_fd;
     ssize_t                 rlen = 0;
     int                     ret = DV_ERROR;
@@ -112,20 +414,30 @@ dv_test_tun_to_ssl(int sock, short event, void *arg)
     }
 
     if (dv_ip_is_v4(tbuf->tb_buf)) {
-        ip4 = (void *)tbuf->tb_buf;
-        wev = dv_ip_wev_find(&ip4->daddr, sizeof(ip4->daddr));
+        ret = dv_ip_addr4(tbuf->tb_buf, &in4);
+        if (ret != DV_OK) {
+            return;
+        }
+        wev = dv_ip_wev_find(&in4, sizeof(in4));
+        key = &in4;
+        ksize = sizeof(in4);
     } else {
-        ip6 = (void *)tbuf->tb_buf;
-        wev = dv_ip_wev_find(&ip6->ip6_dst, sizeof(ip6->ip6_dst));
+        ret = dv_ip_addr6(tbuf->tb_buf, &in6);
+        if (ret != DV_OK) {
+            return;
+        }
+        wev = dv_ip_wev_find(&in6, sizeof(in6));
+        key = &in6;
+        ksize = sizeof(in6);
     }
 
     if (wev == NULL) {
-        DV_LOG(DV_LOG_INFO, "Find wev failed!\n");
+        dv_test_ssl_connect(key, ksize, tbuf->tb_buf, rlen);
         return;
     }
     
     conn = wev->et_conn;
-    if (conn->sc_flags & DV_SK_CONN_FLAG_HANDSHAKED) {
+    if (conn->sc_flags & DV_SK_CONN_FLAG_HANDSHAKING) {
         DV_LOG(DV_LOG_INFO, "Handshaking!\n");
         return;
     }

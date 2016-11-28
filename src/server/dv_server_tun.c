@@ -54,7 +54,7 @@ dv_srv_tun_to_ssl(int sock, short event, void *arg)
     }
     
     conn = wev->et_conn;
-    if (conn->sc_flags & DV_SK_CONN_FLAG_HANDSHAKED) {
+    if (conn->sc_flags & DV_SK_CONN_FLAG_HANDSHAKING) {
         DV_LOG(DV_LOG_INFO, "Handshaking!\n");
         return;
     }
