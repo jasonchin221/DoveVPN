@@ -192,6 +192,7 @@ dv_srv_conn_pool_destroy(void)
     struct list_head    *n = NULL;
     pid_t               pid = getpid();
     int                 destroy = 0;
+    int                 count = 0;
     int                 ret = 0;
 
     if (dv_srv_conn_pool == NULL) {
@@ -213,7 +214,7 @@ dv_srv_conn_pool_destroy(void)
     pthread_spin_unlock(&dv_srv_conn_pool->cp_lock);
 
     if (dv_process == DV_PROCESS_MASTER) {
-        while (1) {
+        while (count < 5) {
             pthread_spin_lock(&dv_srv_conn_pool->cp_lock);
             destroy = (dv_srv_conn_pool->cp_child_count == dv_ncpu);
             pthread_spin_unlock(&dv_srv_conn_pool->cp_lock);
@@ -223,6 +224,7 @@ dv_srv_conn_pool_destroy(void)
             DV_LOG(DV_LOG_INFO, "Waiting for child quit! child_count = %u\n",
                     dv_srv_conn_pool->cp_child_count);
             sleep(1);
+            count++;
         }
         pthread_spin_destroy(&dv_srv_conn_pool->cp_lock);
     }

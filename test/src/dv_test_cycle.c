@@ -39,10 +39,6 @@ const dv_proto_suite_t *dv_test_ssl_proto_suite;
 static dv_event_t dv_test_tun_rev;
 static dv_u8 dv_worker;
 
-static dv_tun_t dv_test_tun = {
-    .tn_fd = -1,
-};
-
 static int
 dv_ip_addr4(void *h, struct sockaddr_in *addr)
 {
@@ -187,7 +183,7 @@ dv_test_ssl_to_tun(int sock, short event, void *arg)
     void                    *ssl = conn->sc_ssl;
     const dv_proto_suite_t  *suite = dv_test_ssl_proto_suite;
     dv_buffer_t             *rbuf = &conn->sc_rbuf;
-    int                     tun_fd = dv_test_tun.tn_fd;
+    int                     tun_fd = dv_srv_tun.tn_fd;
 
     dv_ssl_read_handler(sock, event, arg, ssl, tun_fd, suite, rbuf,
             dv_get_subnet_mtu(), dv_test_ssl_err_handler);
@@ -328,6 +324,7 @@ dv_test_ssl_connect(void *key, size_t len, void *data, ssize_t dlen)
     int                     sockfd = 0;
     int                     ret = DV_ERROR;
 
+    DV_LOG(DV_LOG_INFO, "in!\n");
     addr = &dv_test_conf.cf_backend_addrs[dv_test_conf.cf_curr];
     dv_test_conf.cf_curr = (dv_test_conf.cf_curr + 1) %
         dv_test_conf.cf_backend_addr_num;
@@ -441,9 +438,10 @@ dv_test_tun_to_ssl(int sock, short event, void *arg)
     size_t                  ksize = 0;
     ssize_t                 rlen = 0;
     int                     close = 0;
-    int                     tun_fd = dv_test_tun.tn_fd;
+    int                     tun_fd = dv_srv_tun.tn_fd;
     int                     ret = DV_ERROR;
 
+    DV_LOG(DV_LOG_INFO, "in!\n");
     rlen = read(sock, tbuf->tb_buf, tbuf->tb_buf_size);
     if (rlen <= 0) {
         DV_LOG(DV_LOG_INFO, "Tun read error(%zd)!\n", rlen);
@@ -468,6 +466,7 @@ dv_test_tun_to_ssl(int sock, short event, void *arg)
         ksize = sizeof(in6);
     }
 
+    DV_LOG(DV_LOG_INFO, "wev = %p!\n", wev);
     if (wev == NULL) {
         dv_test_ssl_connect(key, ksize, tbuf->tb_buf, rlen);
         return;
@@ -520,12 +519,6 @@ dv_test_tun_ev_create(int tun_fd)
     return DV_OK;
 }
 
-void
-dv_test_tun_ev_destroy(void)
-{
-    dv_event_destroy(&dv_test_tun_rev);
-}
-
 static int
 dv_test_create_and_set_tun(dv_tun_t *tun, int seq, int mask, int mtu,
             char *subnet_ip, dv_u32 subnet_ip_len)
@@ -546,6 +539,7 @@ dv_test_create_and_set_tun(dv_tun_t *tun, int seq, int mask, int mtu,
 
     ip = dv_subnet_ip_alloc();
     if (ip == NULL) {
+        ret = DV_ERROR;
         goto err;
     }
 
@@ -563,12 +557,17 @@ err:
     return ret;
 }
 
+static void
+dv_test_worker_process_exit(void)
+{
+    dv_worker_process_exit();
+}
 
 static void 
 dv_test_worker_process_cycle(void *cycle, void *data)
 {
     dv_srv_conf_t   *conf = cycle;
-    dv_tun_t        *tun = &dv_test_tun;
+    dv_tun_t        *tun = &dv_srv_tun;
     int             mask = conf->sc_subnet_mask;
     int             worker = *((int *)data);
     int             ret = DV_ERROR;
@@ -578,18 +577,18 @@ dv_test_worker_process_cycle(void *cycle, void *data)
 
     dv_worker_process_init(worker);
 
-    dv_setproctitle("worker process");
+    dv_setproctitle("test worker process");
 
     ret = dv_test_create_and_set_tun(tun, worker, mask, conf->sc_mtu,
             conf->sc_subnet_ip, sizeof(conf->sc_subnet_ip));
     if (ret != DV_OK) {
-        dv_worker_process_exit();
+        dv_test_worker_process_exit();
     }
 
     ret = dv_cpuaffinity_set(worker);
     if (ret != DV_OK) {
         DV_LOG(DV_LOG_INFO, "Set cpuaffinity failed!\n");
-        dv_worker_process_exit();
+        dv_test_worker_process_exit();
     }
 
     /* Event loop */

@@ -45,6 +45,7 @@ static int
 dv_test_port_parse(dv_backend_addr_t *addr, json_object *param)
 {
     addr->ba_port = json_object_get_int(param);
+    DV_LOG(DV_LOG_INFO, "port = %d!\n", addr->ba_port);
 
     return DV_OK;
 }
@@ -62,6 +63,7 @@ dv_test_conf_parse(dv_srv_conf_t *conf, char *file)
     int                     type = 0;
     int                     i = 0;
     int                     j = 0;
+    int                     p = 0;
     int                     ret = DV_ERROR;
 
     ret = dv_srv_conf_parse(conf, file);
@@ -84,8 +86,10 @@ dv_test_conf_parse(dv_srv_conf_t *conf, char *file)
             goto out;
         }
         addr = &dv_test_conf.cf_backend_addrs[dv_test_conf.cf_backend_addr_num];
+        p = 0;
         for (j = 0; j < DV_TEST_CONF_ARRAY_SIZE; j++) {
-            parser = &dv_test_conf_paser[i];
+            parser = &dv_test_conf_paser[j];
+            DV_LOG(DV_LOG_INFO, "Parse %s!\n", parser->cp_name);
             if (!json_object_object_get_ex(a_obj, parser->cp_name, &param)) {
                 continue;
             }
@@ -96,10 +100,10 @@ dv_test_conf_parse(dv_srv_conf_t *conf, char *file)
             if (parser->cp_parser(addr, param) != DV_OK) {
                 goto out;
             }
-            break;
+            p = 1;
         }
 
-        if (j != DV_TEST_CONF_ARRAY_SIZE) {
+        if (p == 1) {
             dv_test_conf.cf_backend_addr_num++;
         }
     }
