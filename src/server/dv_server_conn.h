@@ -12,8 +12,15 @@
 
 typedef struct _dv_srv_conn_t {
     struct list_head    sc_list_head;
+    struct list_head    sc_list_hash;
     void                *sc_ssl;
     void                *sc_ip; 
+    union {
+        struct sockaddr     sc_addr;
+        struct sockaddr_in  sc_in4;
+        struct sockaddr_in6 sc_in6;
+    };
+    size_t              sc_addr_len;
     int                 sc_fd;
     dv_u32              sc_flags;
     pid_t               sc_pid;

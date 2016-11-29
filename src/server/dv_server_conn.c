@@ -11,6 +11,7 @@
 #include "dv_assert.h"
 #include "dv_lib.h"
 #include "dv_mem.h"
+#include "dv_ip_pool.h"
 #include "dv_server_conn.h"
 #include "dv_server_core.h"
 #include "dv_server_cycle.h"
@@ -144,6 +145,10 @@ dv_srv_conn_destroy(dv_srv_conn_t *conn)
     DV_LOG(DV_LOG_INFO, "SSL data in!\n");
     dv_event_destroy(&conn->sc_rev);
     dv_event_destroy(&conn->sc_wev);
+    if (conn->sc_ip) {
+        dv_subnet_ip_free(conn->sc_ip);
+        conn->sc_ip = NULL;
+    }
     if (conn->sc_ssl) {
         suite->ps_shutdown(conn->sc_ssl);
         suite->ps_ssl_free(conn->sc_ssl);

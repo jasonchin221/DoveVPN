@@ -24,6 +24,7 @@
 #include "dv_server_socket.h"
 #include "dv_socket.h"
 #include "dv_assert.h"
+#include "dv_conn_hash.h"
 
 #define DV_TEST_LOG_NAME        "DoveVPN-test-client"
 #define DV_TEST_CONN_FIN        0x02
@@ -170,6 +171,7 @@ static int
 dv_test_ssl_err_handler(int sock, dv_event_t *ev, const dv_proto_suite_t *suite)
 {
     DV_LOG(DV_LOG_INFO, "SSL data in!\n");
+    dv_conn_hash_del(ev->et_conn);
     dv_event_destroy(ev);
 
     return DV_ERROR;
@@ -311,14 +313,13 @@ dv_test_buf_to_ssl(int sock, short event, void *arg)
 }
 
 static int
-dv_test_ssl_connect(void *key, size_t len, void *data, ssize_t dlen)
+dv_test_ssl_connect(struct sockaddr *saddr, size_t len, void *data, ssize_t dlen)
 {
     const dv_proto_suite_t  *suite = dv_test_ssl_proto_suite;
     dv_backend_addr_t       *addr = NULL; 
     dv_event_t              *rev = NULL; 
     dv_event_t              *wev = NULL; 
     dv_srv_conn_t           *conn = NULL;
-    dv_subnet_ip_t          *ip = NULL;
     dv_buffer_t             *wbuf = NULL;
     void                    *ssl = NULL;
     int                     sockfd = 0;
@@ -363,16 +364,9 @@ dv_test_ssl_connect(void *key, size_t len, void *data, ssize_t dlen)
     wev->et_handler = dv_test_buf_to_ssl;
     dv_event_set_write(sockfd, wev);
 
-    ip = dv_subnet_ip_alloc();
-    if (ip == NULL) {
-        DV_LOG(DV_LOG_INFO, "Alloc ip failed!\n");
-        goto out;
-    }
-
-    ip->si_wev = &conn->sc_wev;
-    /* Send message to alloc ip address */
-    conn->sc_ip = ip;
-    dv_ip_hash_add(ip);
+    memcpy(&conn->sc_addr, saddr, len);
+    conn->sc_addr_len = len;
+    dv_conn_hash_add(conn);
 
     ret = suite->ps_connect(ssl);
     conn->sc_flags |= DV_SK_CONN_FLAG_HANDSHAKING;
@@ -411,6 +405,7 @@ dv_test_ssl_connect(void *key, size_t len, void *data, ssize_t dlen)
 
 out:
     if (conn != NULL) {
+        dv_conn_hash_del(conn);
         dv_srv_conn_pool_free(conn);
     } else {
         close(sockfd);
@@ -428,7 +423,7 @@ dv_test_tun_to_ssl(int sock, short event, void *arg)
     dv_srv_conn_t           *conn = NULL;
     const dv_proto_suite_t  *suite = dv_srv_ssl_proto_suite;
     void                    *ssl = NULL;
-    void                    *key = NULL;
+    void                    *addr = NULL;
     struct sockaddr_in      in4 = {
         .sin_family = AF_INET,
     };
@@ -453,26 +448,26 @@ dv_test_tun_to_ssl(int sock, short event, void *arg)
         if (ret != DV_OK) {
             return;
         }
-        wev = dv_ip_wev_find(&in4, sizeof(in4));
-        key = &in4;
+        conn = dv_conn_hash_find((struct sockaddr *)&in4, sizeof(in4));
+        addr = &in4;
         ksize = sizeof(in4);
     } else {
         ret = dv_ip_addr6(tbuf->tb_buf, &in6);
         if (ret != DV_OK) {
             return;
         }
-        wev = dv_ip_wev_find(&in6, sizeof(in6));
-        key = &in6;
+        conn = dv_conn_hash_find((struct sockaddr *)&in6, sizeof(in6));
+        addr = &in6;
         ksize = sizeof(in6);
     }
 
-    DV_LOG(DV_LOG_INFO, "wev = %p!\n", wev);
-    if (wev == NULL) {
-        dv_test_ssl_connect(key, ksize, tbuf->tb_buf, rlen);
+    DV_LOG(DV_LOG_INFO, "conn = %p!\n", conn);
+    if (conn == NULL) {
+        dv_test_ssl_connect(addr, ksize, tbuf->tb_buf, rlen);
         return;
     }
     
-    conn = wev->et_conn;
+    wev = &conn->sc_wev;
     if (conn->sc_flags & DV_SK_CONN_FLAG_HANDSHAKING) {
         DV_LOG(DV_LOG_INFO, "Handshaking!\n");
         return;
@@ -560,6 +555,7 @@ err:
 static void
 dv_test_worker_process_exit(void)
 {
+    dv_conn_hash_exit();
     dv_worker_process_exit();
 }
 
@@ -636,6 +632,18 @@ dv_test_cycle(dv_srv_conf_t *conf)
             conf->sc_port);
     if (ret != DV_OK) {
         DV_LOG(DV_LOG_INFO, "Init ssl socket failed!\n");
+        goto out;
+    }
+
+    if (dv_ip_version4(conf->sc_subnet_ip)) {
+        ret = dv_conn_hash_init(conf->sc_worker_connections, 
+                sizeof(struct sockaddr_in));
+    } else {
+        ret = dv_conn_hash_init(conf->sc_worker_connections, 
+                sizeof(struct sockaddr_in6));
+    }
+    if (ret != DV_OK) {
+        DV_LOG(DV_LOG_INFO, "Init conn hash failed!\n");
         goto out;
     }
 

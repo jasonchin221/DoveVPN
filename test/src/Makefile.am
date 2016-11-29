@@ -1,5 +1,5 @@
 bin_PROGRAMS = dove_test_client
-dove_test_client_SOURCES = dv_test_cycle.c dv_test_main.c dv_test_conf.c \
+dove_test_client_SOURCES = dv_test_cycle.c dv_test_main.c dv_test_conf.c dv_conn_hash.c \
 						   ../../src/server/dv_ip_pool.c ../../src/server/dv_server_conn.c \
 						   ../../src/server/dv_server_cycle.c  ../../src/server/dv_server_signal.c \
 						   ../../src/server/dv_server_tun.c ../../src/server/dv_server_conf.c \
