@@ -2,6 +2,7 @@
 #include "dv_buffer.h"
 #include "dv_mem.h"
 #include "dv_errno.h"
+#include "dv_log.h"
 
 void
 dv_buf_reset(dv_buffer_t *buf)
@@ -63,6 +64,7 @@ dv_buf_data_to_ssl(void *ssl, dv_buffer_t *buf, const dv_proto_suite_t *suite)
         data_len = buf->bf_bsize - (buf->bf_buf - buf->bf_head);
         wlen = suite->ps_write(ssl, buf->bf_head, data_len);
         if (wlen < 0) {
+            DV_LOG(DV_LOG_ERROR, "Write ssl error, data_len = %d\n", data_len);
             return wlen;
         }
 

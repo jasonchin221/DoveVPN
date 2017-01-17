@@ -75,6 +75,8 @@ static void
 dv_openssl_add_all_algorighms(void)
 {
     OpenSSL_add_all_algorithms();
+    ERR_load_ERR_strings();
+    ERR_load_crypto_strings();
 }
 
 static void *
@@ -191,6 +193,8 @@ static int
 dv_openssl_error(void *s, int ret)
 {
     int     sslerr = 0;
+    char    err_msg[1024] = {0};
+    char    *p_tmp = NULL;
 
     sslerr = SSL_get_error(s, ret);
     if (sslerr == SSL_ERROR_WANT_READ) {
@@ -201,7 +205,9 @@ dv_openssl_error(void *s, int ret)
         return -DV_EWANT_WRITE;
     }
 
-    DV_LOG(DV_LOG_INFO, "sslerr = %d, err = %ld\n", sslerr, ERR_get_error());
+    p_tmp = ERR_error_string(ERR_get_error(), err_msg); // 格式：error:errId:库:函数:原因
+
+    DV_LOG(DV_LOG_INFO, "sslerr = %d, err msg = %s\n", sslerr, p_tmp);
     return DV_ERROR;
 }
 
@@ -261,6 +267,7 @@ dv_openssl_write(void *s, const void *buf, int num)
 static int
 dv_openssl_shutdown(void *s)
 {
+    DV_LOG(DV_LOG_INFO, "In!\n");
     return SSL_shutdown(s);
 }
 
