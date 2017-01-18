@@ -19,6 +19,8 @@
 #include "dv_proto.h"
 #include "dv_log.h"
 
+#define DV_OPENSSL_ERR_MSG_LEN          1024
+
 static void dv_openssl_add_all_algorighms(void);
 static void *dv_openssl_ctx_client_new(void);
 static void *dv_openssl_ctx_server_new(void);
@@ -192,9 +194,9 @@ dv_openssl_set_fd(void *s, int fd)
 static int
 dv_openssl_error(void *s, int ret)
 {
-    int     sslerr = 0;
-    char    err_msg[1024] = {0};
     char    *p_tmp = NULL;
+    char    err_msg[DV_OPENSSL_ERR_MSG_LEN] = {0};
+    int     sslerr = 0;
 
     sslerr = SSL_get_error(s, ret);
     if (sslerr == SSL_ERROR_WANT_READ) {
@@ -256,7 +258,9 @@ dv_openssl_write(void *s, const void *buf, int num)
 {
     int     ret = 0;
 
+    DV_LOG(DV_LOG_INFO, "In, s=%p,buf=%p,num=%d\n", s, buf, num);
     ret = SSL_write(s, buf, num);
+    DV_LOG(DV_LOG_INFO, "In\n");
     if (ret > 0) {
         return ret;
     }

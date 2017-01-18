@@ -138,7 +138,7 @@ dv_test_init(dv_srv_conf_t *conf)
         goto out;
     }
 
-    suite = dv_test_ssl_proto_suite;
+    suite = dv_srv_ssl_proto_suite = dv_test_ssl_proto_suite;
     ret = dv_client_ssl_init(suite, &conf->sc_proto);
     if (ret != DV_OK) {
         DV_LOG(DV_LOG_INFO, "Init proto failed!\n");
@@ -173,7 +173,7 @@ dv_test_ssl_err_handler(int sock, dv_event_t *ev, const dv_proto_suite_t *suite)
     DV_LOG(DV_LOG_INFO, "SSL data in!\n");
     dv_conn_hash_del(ev->et_conn);
     dv_event_destroy(ev);
-
+    
     return DV_ERROR;
 }
 
@@ -294,7 +294,7 @@ dv_test_buf_to_ssl(int sock, short event, void *arg)
     dv_srv_conn_t           *conn = ev->et_conn;
     dv_buffer_t             *wbuf = &conn->sc_wbuf;
     void                    *ssl = conn->sc_ssl;
-    const dv_proto_suite_t  *suite = dv_srv_ssl_proto_suite;
+    const dv_proto_suite_t  *suite = dv_test_ssl_proto_suite;
     int                     ret = DV_OK;
 
     ret = dv_buf_data_to_ssl(ssl, wbuf, suite);
@@ -359,6 +359,7 @@ dv_test_ssl_connect(struct sockaddr *saddr, size_t len, void *data, ssize_t dlen
         goto out;
     }
 
+    DV_LOG(DV_LOG_INFO, "conn = %p!\n", conn);
     rev = &conn->sc_rev;
     wev = &conn->sc_wev;
     wev->et_handler = dv_test_buf_to_ssl;
@@ -421,7 +422,7 @@ dv_test_tun_to_ssl(int sock, short event, void *arg)
     dv_event_t              *wev = NULL;
     dv_buffer_t             *wbuf = NULL;
     dv_srv_conn_t           *conn = NULL;
-    const dv_proto_suite_t  *suite = dv_srv_ssl_proto_suite;
+    const dv_proto_suite_t  *suite = dv_test_ssl_proto_suite;
     void                    *ssl = NULL;
     void                    *addr = NULL;
     struct sockaddr_in      in4 = {
@@ -436,7 +437,6 @@ dv_test_tun_to_ssl(int sock, short event, void *arg)
     int                     tun_fd = dv_srv_tun.tn_fd;
     int                     ret = DV_ERROR;
 
-    DV_LOG(DV_LOG_INFO, "in!\n");
     rlen = read(sock, tbuf->tb_buf, tbuf->tb_buf_size);
     if (rlen <= 0) {
         DV_LOG(DV_LOG_INFO, "Tun read error(%zd)!\n", rlen);
@@ -461,7 +461,6 @@ dv_test_tun_to_ssl(int sock, short event, void *arg)
         ksize = sizeof(in6);
     }
 
-    DV_LOG(DV_LOG_INFO, "conn = %p!\n", conn);
     if (conn == NULL) {
         dv_test_ssl_connect(addr, ksize, tbuf->tb_buf, rlen);
         return;
@@ -475,14 +474,8 @@ dv_test_tun_to_ssl(int sock, short event, void *arg)
 
     wbuf = &conn->sc_wbuf;
     ssl = conn->sc_ssl;
-    if (dv_tcp_flag_rst(tbuf->tb_buf)) {
+    if (dv_tcp_flag_rst(tbuf->tb_buf) || dv_tcp_flag_fin(tbuf->tb_buf)) {
         close = 1;
-    } else if (dv_tcp_flag_fin(tbuf->tb_buf)) {
-        if (conn->sc_flags & DV_TEST_CONN_FIN) {
-            close = 1;
-        } else {
-            conn->sc_flags |= DV_TEST_CONN_FIN;
-        }
     }
 
     ret = dv_trans_data_to_ssl(tun_fd, ssl, wbuf, suite, tbuf, rlen);
@@ -493,7 +486,7 @@ dv_test_tun_to_ssl(int sock, short event, void *arg)
         }
     }
     if (close != 0) {
-        dv_srv_conn_pool_free(conn);
+        //Set timer
         return;
     }
 }

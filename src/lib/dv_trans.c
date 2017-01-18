@@ -94,21 +94,19 @@ dv_trans_data_to_ssl(int tun_fd, void *ssl, dv_buffer_t *buf,
         }
     }
 
-    if (data_len == 0) {
-        wlen = suite->ps_write(ssl, tbuf->tb_buf, rlen);
-        if (wlen == rlen) {
-            return DV_OK;
-        }
+    wlen = suite->ps_write(ssl, tbuf->tb_buf, rlen);
+    if (wlen == rlen) {
+        return DV_OK;
+    }
 
-        if (wlen < 0) {
-            if (wlen == -DV_EWANT_WRITE) {
-                wlen = 0;
-            } else {
-                DV_LOG(DV_LOG_INFO, "Send data failed! mlen = %d\n", (int)rlen);
-                suite->ps_shutdown(ssl);
-                return DV_ERROR;
-            } 
-        }
+    if (wlen < 0) {
+        if (wlen == -DV_EWANT_WRITE) {
+            wlen = 0;
+        } else {
+            DV_LOG(DV_LOG_INFO, "Send data failed! mlen = %d\n", (int)rlen);
+            suite->ps_shutdown(ssl);
+            return DV_ERROR;
+        } 
     }
 
     data_len = rlen - wlen;

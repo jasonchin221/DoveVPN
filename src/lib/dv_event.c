@@ -204,7 +204,7 @@ dv_event_set_timer(dv_event_t *tmout)
     }
 
     tmout->et_ev = evtimer_new(dv_event_base, tmout->et_handler, 
-                    (void*)tmout);
+                    (void *)tmout);
     if (tmout->et_ev == NULL) {
         DV_LOG(DV_LOG_INFO, "Evtime_new failed!\n");
     }
